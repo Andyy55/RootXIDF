@@ -7,6 +7,8 @@
 #include "esp_event.h"
 #include "nvs_flash.h"
 #include "globals.h"
+#include "esp_netif.h"
+
 
 // Fungsi sakti buat ubah Teks MAC ke Bytes
 void stringToMac(const char* macStr, uint8_t *macAddr) {
