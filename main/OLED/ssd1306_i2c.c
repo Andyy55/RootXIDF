@@ -792,37 +792,47 @@ void ssd1306_select_font(uint8_t id, uint8_t idx)
 uint8_t ssd1306_draw_char(uint8_t id, uint8_t x, uint8_t y, unsigned char c, ssd1306_color_t foreground, ssd1306_color_t background)
 {
     oled_i2c_ctx *ctx = _ctxs[id];
-    uint8_t i, j;
-    const uint8_t *bitmap;
-
     if (ctx == NULL || ctx->font == NULL) return 0;
 
     if ((c < ctx->font->char_start) || (c > ctx->font->char_end))
         c = ' ';
     
     c = c - ctx->font->char_start;
-    bitmap = ctx->font->bitmap + ctx->font->char_descriptors[c].offset;
-    
+    const uint8_t *bitmap = ctx->font->bitmap + ctx->font->char_descriptors[c].offset;
     uint8_t char_w = ctx->font->char_descriptors[c].width;
-    uint8_t char_h = ctx->font->height; // Untuk 5x7, tinggi biasanya 7 atau 8
+    uint8_t char_h = ctx->font->height;
 
-    // Loop i (lebar/kolom) dulu, baru j (tinggi/baris)
-    for (i = 0; i < char_w; i++)
-    {
-        uint8_t line = bitmap[i]; // Ambil 1 byte yang mewakili 1 kolom vertikal
-        for (j = 0; j < char_h; j++)
-        {
-            // Periksa bit dari LSB ke MSB karena GLCD biasanya simpan bit 0 di atas
-            if (line & (1 << j)) {
-                ssd1306_draw_pixel(id, x + i, y + j, foreground);
-            } 
-            else if (background != SSD1306_COLOR_TRANSPARENT) {
-                ssd1306_draw_pixel(id, x + i, y + j, background);
+    // Logika adaptif berdasarkan tinggi font
+    // Tahoma 8pt tingginya 11, GLCD tingginya 7 atau 8
+    if (char_h > 8) {
+        // PAKAI LOGIKA HORIZONTAL (Untuk Tahoma)
+        uint8_t bytes_per_row = (char_w + 7) / 8;
+        for (uint8_t j = 0; j < char_h; ++j) {
+            for (uint8_t i = 0; i < char_w; ++i) {
+                uint8_t byte = bitmap[j * bytes_per_row + (i / 8)];
+                if (byte & (0x80 >> (i % 8))) {
+                    ssd1306_draw_pixel(id, x + i, y + j, foreground);
+                } else if (background != SSD1306_COLOR_TRANSPARENT) {
+                    ssd1306_draw_pixel(id, x + i, y + j, background);
+                }
+            }
+        }
+    } else {
+        // PAKAI LOGIKA VERTIKAL (Untuk GLCD 5x7)
+        for (uint8_t i = 0; i < char_w; i++) {
+            uint8_t line = bitmap[i]; 
+            for (uint8_t j = 0; j < char_h; j++) {
+                if (line & (1 << j)) {
+                    ssd1306_draw_pixel(id, x + i, y + j, foreground);
+                } else if (background != SSD1306_COLOR_TRANSPARENT) {
+                    ssd1306_draw_pixel(id, x + i, y + j, background);
+                }
             }
         }
     }
     return char_w;
 }
+
 
 
 
