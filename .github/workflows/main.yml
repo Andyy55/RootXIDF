@@ -24,26 +24,26 @@ jobs:
 
       - name: Build Firmware
         run: |
-          . $IDF_PATH/export.sh
+          # 1. Masuk ke folder hasil clone dan aktifkan
+          cd ~/esp-idf
+          ./install.sh
+          . ./export.sh
+          cd $GITHUB_WORKSPACE
           
-          # 1. Kasih izin tulis ke folder komponen WiFi biar bisa di-patch
-          chmod -R 777 /opt/esp/idf/components/esp_wifi/
-          
-          # 2. Patch logic verifikasi interface WiFi
-          # Kita paksa fungsi yang tadinya ngeluarin error interface jadi "OK"
-          python3 -c "import os; p='/opt/esp/idf/components/esp_wifi/src/wifi_init.c'; \
+          # 2. Patching pake path yang PASTI ADA
+          # Kita hajar file wifi_init.c di lokasi clone v6.0
+          python3 -c "import os; p=os.path.expanduser('~/esp-idf/components/esp_wifi/src/wifi_init.c'); \
           if os.path.exists(p): \
               s=open(p).read().replace('return ESP_ERR_WIFI_IF;', 'return ESP_OK;'); \
               open(p,'w').write(s); \
               print('Patch wifi_init.c Berhasil!')"
 
-          # 3. Paksa pake sdkconfig sakti lu (N16R8 DIO-OPI)
+          # 3. Build Project
           cp sdkconfig.defaults sdkconfig
-          
-          # 4. Hajar build
           idf.py set-target esp32s3
           idf.py clean
           idf.py build
+
 
 
       - name: Upload Bin
