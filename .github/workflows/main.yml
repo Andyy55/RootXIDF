@@ -3,33 +3,28 @@ name: Build RootX ESP-IDF
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    container: espressif/idf:release-v5.5 # Pake container resmi biar gak butuh action luar
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
-      - name: Build with ESP-IDF
-        uses: espressif/esp-idf-github-action@v2
-        with:
-          esp_idf_version: v5.5.1
-          target: esp32s3
-          sdkconfig_defaults: "sdkconfig.defaults"
+      - name: Build Firmware
+        run: |
+          # Paksa pake sdkconfig sakti lu
+          cp sdkconfig.defaults sdkconfig
+          idf.py set-target esp32s3
+          idf.py build
 
       - name: Upload binary artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: RootX-S3-Firmware-v5.5.1
-          path: |
-            build/bootloader/bootloader.bin
-            build/partition_table/partition-table.bin
-            build/*.bin
-            build/flashing_args
+          name: RootX-S3-Firmware
+          path: build/*.bin
+          
