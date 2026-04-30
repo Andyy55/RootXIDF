@@ -231,8 +231,8 @@ bool ssd1306_init(uint8_t id,uint8_t scl_pin, uint8_t sda_pin)
         _command(ctx->address, 0x40); // SSD1306_SETSTARTLINE line #0
         _command(ctx->address, 0x20); // SSD1306_MEMORYMODE
         _command(ctx->address, 0x00); // 0x0 act like ks0108
-        _command(ctx->address, 0xa1); // SSD1306_SEGREMAP | 1
-        _command(ctx->address, 0xc8); // SSD1306_COMSCANDEC
+        _command(ctx->address, 0xa0); // SSD1306_SEGREMAP | 1 / 0xa1 = 180°
+        _command(ctx->address, 0xc0); // SSD1306_COMSCANDEC / 0xc8 = 180°
         _command(ctx->address, 0xda); // SSD1306_SETCOMPINS
         _command(ctx->address, 0x12);
         _command(ctx->address, 0x81); // SSD1306_SETCONTRAST
@@ -794,51 +794,41 @@ uint8_t ssd1306_draw_char(uint8_t id, uint8_t x, uint8_t y, unsigned char c, ssd
     oled_i2c_ctx *ctx = _ctxs[id];
     uint8_t i, j;
     const uint8_t *bitmap;
-    uint8_t line=0;
+    uint8_t line = 0;
 
-    if (ctx == NULL)
-        return 0;
+    if (ctx == NULL || ctx->font == NULL) return 0;
 
-    if (ctx->font == NULL)
-        return 0;
-
-    // we always have space in the font set
     if ((c < ctx->font->char_start) || (c > ctx->font->char_end))
         c = ' ';
-    c = c - ctx->font->char_start;   // c now become index to tables
+    
+    c = c - ctx->font->char_start;
     bitmap = ctx->font->bitmap + ctx->font->char_descriptors[c].offset;
-    for (j = 0; j < ctx->font->height; ++j)
+    
+    // Luas kotak karakter (lebar x tinggi)
+    uint8_t char_w = ctx->font->char_descriptors[c].width;
+    uint8_t char_h = ctx->font->height;
+    uint8_t bytes_per_row = (char_w + 7) / 8;
+
+    for (j = 0; j < char_h; ++j)
     {
-        for (i = 0; i < ctx->font->char_descriptors[c].width; ++i)
+        for (i = 0; i < char_w; ++i)
         {
-            if (i % 8 == 0)
-            {
-                line = bitmap[(ctx->font->char_descriptors[c].width + 7) / 8 * j + i / 8]; // line data
+            // Ambil data bit dari bitmap
+            if (i % 8 == 0) {
+                line = bitmap[j * bytes_per_row + i / 8];
             }
-            if (line & 0x80)
-            {
+            
+            // Cek bit paling kiri (0x80)
+            if (line & 0x80) {
                 ssd1306_draw_pixel(id, x + i, y + j, foreground);
+            } 
+            else if (background != SSD1306_COLOR_TRANSPARENT) {
+                ssd1306_draw_pixel(id, x + i, y + j, background);
             }
-            else
-            {
-                switch (background)
-                {
-                case SSD1306_COLOR_TRANSPARENT:
-                    // Not drawing for transparent background
-                    break;
-                case SSD1306_COLOR_WHITE:
-                case SSD1306_COLOR_BLACK:
-                    ssd1306_draw_pixel(id, x + i, y + j, background);
-                    break;
-                case SSD1306_COLOR_INVERT:
-                    // I don't know why I need invert background
-                    break;
-                }
-            }
-            line = line << 1;
+            line <<= 1; // Geser ke bit berikutnya
         }
     }
-    return (ctx->font->char_descriptors[c].width);
+    return char_w;
 }
 
 

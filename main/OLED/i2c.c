@@ -49,7 +49,8 @@
 //#define SCL_BIT  BIT4
 
 //! Delay amount in-between bits, with os_delay_us(1) I get ~300kHz I2C clock
-#define _DELAY ets_delay_us(10)
+#define _DELAY { asm volatile("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"); }
+
 
 /** @} */
 
