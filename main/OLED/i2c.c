@@ -47,14 +47,14 @@
 //#define SCL_PIN  4
 //! @brief GPIO bit location for SCL pin
 //#define SCL_BIT  BIT4
-static inline void delay_600_nop() {
-    for (int i = 0; i < 600; i++) {
+static inline void delay_nop() {
+    for (int i = 0; i < 100; i++) {
         asm volatile("nop");
     }
 }
 
 //! Delay amount in-between bits, with os_delay_us(1) I get ~300kHz I2C clock
-#define _DELAY { delay_600_nop(); }
+#define _DELAY { delay_nop(); }
 
 
 /** @} */
