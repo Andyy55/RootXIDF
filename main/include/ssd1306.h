@@ -231,6 +231,9 @@ void ssd1306_invert_display(uint8_t id, bool invert);
  */
 void ssd1306_update_buffer(uint8_t id, uint8_t* data, uint16_t length);
 
+// Tambahin di ssd1306.h biar bisa dipanggil dari luar
+uint8_t ssd1306_draw_char_adafruit(uint8_t id, uint8_t x, uint8_t y, unsigned char c, ssd1306_color_t foreground, ssd1306_color_t background);
+void ssd1306_draw_string_adafruit(uint8_t id, uint8_t x, uint8_t y, const char *str, ssd1306_color_t foreground, ssd1306_color_t background);
 
 
 #endif  /* SSD1306_H */
