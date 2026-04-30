@@ -1,0 +1,36 @@
+name: Build RootX ESP-IDF
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: esp-idf build
+        uses: espressif/idf-build-action@v1
+        with:
+          esp_idf_version: v5.5.1  # <--- SEKARANG UDAH PAS COK!
+          target: esp32s3
+          sdkconfig_defaults: "sdkconfig.defaults"
+
+      - name: Upload binary artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: RootX-S3-Firmware-v5.5.1
+          path: |
+            build/bootloader/bootloader.bin
+            build/partition_table/partition-table.bin
+            build/*.bin
+            build/flashing_args
+            
