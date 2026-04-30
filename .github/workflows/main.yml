@@ -17,17 +17,19 @@ jobs:
 
       - name: Build Firmware
         run: |
-          # 1. Aktifkan environment IDF (Kunci biar idf.py ketemu)
           . $IDF_PATH/export.sh
           
-          # 2. Paksa pake sdkconfig sakti lu
+          # --- PROSES JEBOL FIREWALL (BINARY PATCH) ---
+          # Kita cari instruksi yang nge-block 0xC0 di library WiFi S3
+          # Dan kita paksa jadi 'selalu diizinkan'
+          find /opt/esp/idf/components/esp_wifi/lib/esp32s3/ -name "libnet80211.a" -exec chmod +w {} \;
+          find /opt/esp/idf/components/esp_wifi/lib/esp32s3/ -name "libnet80211.a" -exec sed -i 's/\x0c\x00\x00\x00\xeb/\x0c\x00\x00\x00\xe9/g' {} \;
+          
+          # Paksa pake sdkconfig sakti
           cp sdkconfig.defaults sdkconfig
-          
-          # 3. Set target ke S3
           idf.py set-target esp32s3
-          
-          # 4. Build sampai jadi .bin
           idf.py build
+
 
 
       - name: Upload binary artifacts
