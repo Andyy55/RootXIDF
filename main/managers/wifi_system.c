@@ -122,8 +122,11 @@ void loopWiFi(void * pvParameters) {
             esp_wifi_scan_get_ap_num(&ap_count);
             totalWiFi = (ap_count > 30) ? 30 : ap_count;
             
+            uint16_t fetch_count = totalWiFi; 
+            // Masukin variabel perantaranya ke fungsi
+            
             wifi_ap_record_t ap_records[30];
-            esp_wifi_scan_get_ap_records(&totalWiFi, ap_records);
+            esp_wifi_scan_get_ap_records(&fetch_count, ap_records); 
             
             for (int i = 0; i < totalWiFi; i++) {
                 listWiFi[i].id = i;
