@@ -107,7 +107,7 @@ if (ssd1306_init(0, 9, 8)) {
     xTaskCreatePinnedToCore(
         loopWiFi,     /* Fungsi task (ada di wifi_system.c) */
         "TaskWiFi",   /* Nama task */
-        4096,         /* Stack size (di ESP-IDF dikecilin aja cukup) */
+        32768,         /* Stack size (di ESP-IDF dikecilin aja cukup) */
         NULL,         /* Parameter */
         1,            /* Prioritas */
         &TaskWiFi,    /* Handle */
