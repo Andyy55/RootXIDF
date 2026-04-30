@@ -794,7 +794,6 @@ uint8_t ssd1306_draw_char(uint8_t id, uint8_t x, uint8_t y, unsigned char c, ssd
     oled_i2c_ctx *ctx = _ctxs[id];
     uint8_t i, j;
     const uint8_t *bitmap;
-    uint8_t line = 0;
 
     if (ctx == NULL || ctx->font == NULL) return 0;
 
@@ -804,32 +803,27 @@ uint8_t ssd1306_draw_char(uint8_t id, uint8_t x, uint8_t y, unsigned char c, ssd
     c = c - ctx->font->char_start;
     bitmap = ctx->font->bitmap + ctx->font->char_descriptors[c].offset;
     
-    // Luas kotak karakter (lebar x tinggi)
     uint8_t char_w = ctx->font->char_descriptors[c].width;
-    uint8_t char_h = ctx->font->height;
-    uint8_t bytes_per_row = (char_w + 7) / 8;
+    uint8_t char_h = ctx->font->height; // Untuk 5x7, tinggi biasanya 7 atau 8
 
-    for (j = 0; j < char_h; ++j)
+    // Loop i (lebar/kolom) dulu, baru j (tinggi/baris)
+    for (i = 0; i < char_w; i++)
     {
-        for (i = 0; i < char_w; ++i)
+        uint8_t line = bitmap[i]; // Ambil 1 byte yang mewakili 1 kolom vertikal
+        for (j = 0; j < char_h; j++)
         {
-            // Ambil data bit dari bitmap
-            if (i % 8 == 0) {
-                line = bitmap[j * bytes_per_row + i / 8];
-            }
-            
-            // Cek bit paling kiri (0x80)
-            if (line & 0x80) {
+            // Periksa bit dari LSB ke MSB karena GLCD biasanya simpan bit 0 di atas
+            if (line & (1 << j)) {
                 ssd1306_draw_pixel(id, x + i, y + j, foreground);
             } 
             else if (background != SSD1306_COLOR_TRANSPARENT) {
                 ssd1306_draw_pixel(id, x + i, y + j, background);
             }
-            line <<= 1; // Geser ke bit berikutnya
         }
     }
     return char_w;
 }
+
 
 
 uint8_t ssd1306_draw_string(uint8_t id, uint8_t x, uint8_t y, char *str, ssd1306_color_t foreground, ssd1306_color_t background)
