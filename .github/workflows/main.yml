@@ -1,41 +1,55 @@
-name: Build RootX ESP-IDF
+name: Build RootX v6.0
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
+  workflow dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: espressif/idf:release-v5.5 # Pake container resmi biar gak butuh action luar
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
+      - uses: actions/checkout@v4
+
+      - name: Install ESP-IDF v6.0
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget git flex bison gperf python3-pip python3-setuptools cmake ninja-build ccache libffi-dev libssl-dev dfu-util
+          git clone -b v6.0 --depth 1 --recursive https://github.com/espressif/esp-idf.git ~/esp-idf
+          ~/esp-idf/install.sh
+
+      - name: Patch gdbstub Source
+        run: |
+          python3 -c "import os,pathlib; p=pathlib.Path(os.path.expanduser('~/esp-idf'))/'components/esp_gdbstub/src/gdbstub.c'; s=p.read_text(encoding='utf-8'); s=s.replace('#if (CONFIG_ESP_SYSTEM_GDBSTUB_RUNTIME || CONFIG_ESP_GDBSTUB_SUPPORT_TASKS)', '#if 1'); p.write_text(s, encoding='utf-8')"
 
       - name: Build Firmware
         run: |
           . $IDF_PATH/export.sh
           
-          # --- PROSES JEBOL FIREWALL (BINARY PATCH) ---
-          # Kita cari instruksi yang nge-block 0xC0 di library WiFi S3
-          # Dan kita paksa jadi 'selalu diizinkan'
-          find /opt/esp/idf/components/esp_wifi/lib/esp32s3/ -name "libnet80211.a" -exec chmod +w {} \;
-          find /opt/esp/idf/components/esp_wifi/lib/esp32s3/ -name "libnet80211.a" -exec sed -i 's/\x0c\x00\x00\x00\xeb/\x0c\x00\x00\x00\xe9/g' {} \;
+          # 1. Kasih izin tulis ke folder komponen WiFi biar bisa di-patch
+          chmod -R 777 /opt/esp/idf/components/esp_wifi/
           
-          # Paksa pake sdkconfig sakti
+          # 2. Patch logic verifikasi interface WiFi
+          # Kita paksa fungsi yang tadinya ngeluarin error interface jadi "OK"
+          python3 -c "import os; p='/opt/esp/idf/components/esp_wifi/src/wifi_init.c'; \
+          if os.path.exists(p): \
+              s=open(p).read().replace('return ESP_ERR_WIFI_IF;', 'return ESP_OK;'); \
+              open(p,'w').write(s); \
+              print('Patch wifi_init.c Berhasil!')"
+
+          # 3. Paksa pake sdkconfig sakti lu (N16R8 DIO-OPI)
           cp sdkconfig.defaults sdkconfig
+          
+          # 4. Hajar build
           idf.py set-target esp32s3
+          idf.py clean
           idf.py build
 
 
-
-      - name: Upload binary artifacts
+      - name: Upload Bin
         uses: actions/upload-artifact@v4
         with:
-          name: RootX-S3-Firmware
+          name: RootX-v6-Firmware
           path: |
             build/bootloader/bootloader.bin
             build/partition_table/partition-table.bin
