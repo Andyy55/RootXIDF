@@ -41,7 +41,7 @@
 //! @brief Panel 0 type, define to SSD1306_NONE if not used.
 #define PANEL0_TYPE SSD1306_128x64
 //! @brief I2C address for panel 0
-#define PANEL0_ADDR (0x3c)
+#define PANEL0_ADDR (0x3c << 1)
 //! @brief If panel 0 has external RESET pin, define this as 1
 #define PANEL0_USE_RST 0
 //! @brief GPIO MUX for panel 0 RESET pin

@@ -49,7 +49,7 @@
 //#define SCL_BIT  BIT4
 
 //! Delay amount in-between bits, with os_delay_us(1) I get ~300kHz I2C clock
-#define _DELAY ets_delay_us(1)
+#define _DELAY ets_delay_us(10)
 
 /** @} */
 
@@ -76,15 +76,16 @@ void i2c_init(uint8_t scl_pin, uint8_t sda_pin)
     g_scl_pin = scl_pin;
     g_sda_pin = sda_pin;
 
-    gpio_set_pull_mode(g_scl_pin,GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode(g_sda_pin,GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(g_scl_pin, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(g_sda_pin, GPIO_PULLUP_ONLY);
 
-    gpio_set_direction(g_scl_pin,GPIO_MODE_INPUT_OUTPUT);
-    gpio_set_direction(g_sda_pin,GPIO_MODE_INPUT_OUTPUT);
+    // KUNCI SAKTINYA DI SINI: WAJIB OPEN-DRAIN (_OD)
+    gpio_set_direction(g_scl_pin, GPIO_MODE_INPUT_OUTPUT_OD);
+    gpio_set_direction(g_sda_pin, GPIO_MODE_INPUT_OUTPUT_OD);
 
     // I2C bus idle state.
-    gpio_set_level(g_scl_pin,1);
-    gpio_set_level(g_sda_pin,1);
+    gpio_set_level(g_scl_pin, 1);
+    gpio_set_level(g_sda_pin, 1);
 }
 
 
