@@ -44,10 +44,10 @@ const char* subMenuSet[]  = { "Brightness", "WiFi Setup", "About RootX", "Reboot
 void tampilkanMenuLogo() {
     ssd1306_clear(0);
     
-    if(currentMenu == 0)      ssd1306_draw_string(0, 0, 0, "#> RootX: WIFI", WHITE, BLACK);
-    else if(currentMenu == 1) ssd1306_draw_string(0, 0, 0, "#> RootX: BLE", WHITE, BLACK);
-    else if(currentMenu == 2) ssd1306_draw_string(0, 0, 0, "#> RootX: IR", WHITE, BLACK);
-    else                      ssd1306_draw_string(0, 0, 0, "#> RootX: SETS", WHITE, BLACK);
+    if(currentMenu == 0)      ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: WIFI", WHITE, BLACK);
+    else if(currentMenu == 1) ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: BLE", WHITE, BLACK);
+    else if(currentMenu == 2) ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: IR", WHITE, BLACK);
+    else                      ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: SETS", WHITE, BLACK);
     
     ssd1306_draw_hline(0, 0, 9, 128, WHITE);
 
@@ -60,9 +60,9 @@ void tampilkanMenuLogo() {
     oled_draw_bitmap(0, 48, 22, bigIcon, 32, 32, WHITE);
 
     // Font library ini ukurannya fix, jadi kita akalin kursornya aja
-    ssd1306_draw_string(0, 20, 30, "<", WHITE, BLACK);
-    ssd1306_draw_string(0, 95, 30, ">", WHITE, BLACK);
-    ssd1306_draw_string(0, 40, 56, ">SELECT<", WHITE, BLACK); 
+    ssd1306_draw_string_adafruit(0, 20, 30, "<", WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 95, 30, ">", WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 40, 56, ">SELECT<", WHITE, BLACK); 
     
     ssd1306_refresh(0, true);
 }
@@ -71,10 +71,10 @@ void tampilkanMenuUtama() {
     ssd1306_clear(0);
     int totalSub = 0; 
 
-    if(currentMenu == 0)      { ssd1306_draw_string(0, 0, 0, "#> RootX: WIFI", WHITE, BLACK); totalSub = 4; }
-    else if(currentMenu == 1) { ssd1306_draw_string(0, 0, 0, "#> RootX: BLE ", WHITE, BLACK); totalSub = 3; }
-    else if(currentMenu == 2) { ssd1306_draw_string(0, 0, 0, "#> RootX: IR", WHITE, BLACK);   totalSub = 5; }
-    else                      { ssd1306_draw_string(0, 0, 0, "#> RootX: SETS", WHITE, BLACK); totalSub = 4; }
+    if(currentMenu == 0)      { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: WIFI", WHITE, BLACK); totalSub = 4; }
+    else if(currentMenu == 1) { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: BLE ", WHITE, BLACK); totalSub = 3; }
+    else if(currentMenu == 2) { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: IR", WHITE, BLACK);   totalSub = 5; }
+    else                      { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: SETS", WHITE, BLACK); totalSub = 4; }
     
     ssd1306_draw_hline(0, 0, 9, 128, WHITE);
 
@@ -106,7 +106,7 @@ void tampilkanMenuUtama() {
         else if(currentMenu == 2) textToPrint = subMenuIR[itemIndex];
         else                      textToPrint = subMenuSet[itemIndex];
 
-        ssd1306_draw_string(0, 18, yPos, (char*)textToPrint, textColor, bgColor);
+        ssd1306_draw_string_adafruit(0, 18, yPos, (char*)textToPrint, textColor, bgColor);
     }
     ssd1306_refresh(0, true);
 }
@@ -117,30 +117,30 @@ void tampilkanWifiScanner() {
 
     if (scannerState == 0) {
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-        ssd1306_draw_string(0, 2, 1, "WIFI SCANNER", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 1, "WIFI SCANNER", BLACK, WHITE);
 
-        ssd1306_draw_string(0, 40, 25, "Yakin??", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 40, 25, "Yakin??", WHITE, BLACK);
 
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
-        ssd1306_draw_string(0, 2, 55, "< CANCEL", BLACK, WHITE);
-        ssd1306_draw_string(0, 95, 55, "YES >", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 55, "< CANCEL", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 95, 55, "YES >", BLACK, WHITE);
     }
     else if (scannerState == 1) {
-        ssd1306_draw_string(0, 20, 25, "Scanning Air...", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 20, 25, "Scanning Air...", WHITE, BLACK);
         if (scanDone) scannerState = 2; 
     }
     else if (scannerState == 2) {
         if (totalWiFi == 0) {
             ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-            ssd1306_draw_string(0, 2, 1, "SAVED NETWORKS", BLACK, WHITE);
-            ssd1306_draw_string(0, 15, 25, "BELUM ADA DATA!", WHITE, BLACK);
-            ssd1306_draw_string(0, 10, 35, "Scan WiFi dulu", WHITE, BLACK);
+            ssd1306_draw_string_adafruit(0, 2, 1, "SAVED NETWORKS", BLACK, WHITE);
+            ssd1306_draw_string_adafruit(0, 15, 25, "BELUM ADA DATA!", WHITE, BLACK);
+            ssd1306_draw_string_adafruit(0, 10, 35, "Scan WiFi dulu", WHITE, BLACK);
             ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
-            ssd1306_draw_string(0, 2, 55, "< BACK", BLACK, WHITE);
+            ssd1306_draw_string_adafruit(0, 2, 55, "< BACK", BLACK, WHITE);
         } else {
             ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
             snprintf(buf, sizeof(buf), "SCANNER - %d", totalWiFi);
-            ssd1306_draw_string(0, 2, 1, buf, BLACK, WHITE);
+            ssd1306_draw_string_adafruit(0, 2, 1, buf, BLACK, WHITE);
             
             for (int i = 0; i < 3; i++) {
                 int itemIdx = scrollPosScanner + i;
@@ -156,7 +156,7 @@ void tampilkanWifiScanner() {
                     }
 
                     snprintf(buf, sizeof(buf), "%d.", listWiFi[itemIdx].id);
-                    ssd1306_draw_string(0, 1, yPos + 1, buf, textColor, bgColor);
+                    ssd1306_draw_string_adafruit(0, 1, yPos + 1, buf, textColor, bgColor);
                     
                     int maxChar = 8;
                     int len = strlen(listWiFi[itemIdx].ssid);
@@ -171,26 +171,26 @@ void tampilkanWifiScanner() {
                         if (len > maxChar) strncpy(textShow, listWiFi[itemIdx].ssid, maxChar);
                         else               strcpy(textShow, listWiFi[itemIdx].ssid);
                     }
-                    ssd1306_draw_string(0, 20, yPos + 1, textShow, textColor, bgColor);
+                    ssd1306_draw_string_adafruit(0, 20, yPos + 1, textShow, textColor, bgColor);
 
                     snprintf(buf, sizeof(buf), "C:%d", listWiFi[itemIdx].channel);
-                    ssd1306_draw_string(0, 65, yPos + 1, buf, textColor, bgColor);
+                    ssd1306_draw_string_adafruit(0, 65, yPos + 1, buf, textColor, bgColor);
                     snprintf(buf, sizeof(buf), "%ddB", listWiFi[itemIdx].rssi);
-                    ssd1306_draw_string(0, 95, yPos + 1, buf, textColor, bgColor);
+                    ssd1306_draw_string_adafruit(0, 95, yPos + 1, buf, textColor, bgColor);
                 }
             }
             ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
-            ssd1306_draw_string(0, 2, 55, "< BACK", BLACK, WHITE);
-            ssd1306_draw_string(0, 53, 55, "[OK]", BLACK, WHITE);
+            ssd1306_draw_string_adafruit(0, 2, 55, "< BACK", BLACK, WHITE);
+            ssd1306_draw_string_adafruit(0, 53, 55, "[OK]", BLACK, WHITE);
         }
     }
     else if (scannerState == 3) {
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-        ssd1306_draw_string(0, 22, 1, "DETAIL TARGET", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 22, 1, "DETAIL TARGET", BLACK, WHITE);
 
         int xSide = 5; 
         
-        ssd1306_draw_string(0, xSide, 13, "SSID: ", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, xSide, 13, "SSID: ", WHITE, BLACK);
         int lenSSID = strlen(targetTerkunci.ssid);
         char tmpSSID[20] = {0};
         if (lenSSID > 14) {
@@ -201,23 +201,23 @@ void tampilkanWifiScanner() {
         } else {
             strcpy(tmpSSID, targetTerkunci.ssid);
         }
-        ssd1306_draw_string(0, xSide + 35, 13, tmpSSID, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, xSide + 35, 13, tmpSSID, WHITE, BLACK);
 
-        ssd1306_draw_string(0, xSide, 23, "MAC : ", WHITE, BLACK);
-        ssd1306_draw_string(0, xSide + 35, 23, targetTerkunci.mac, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, xSide, 23, "MAC : ", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, xSide + 35, 23, targetTerkunci.mac, WHITE, BLACK);
         
         snprintf(buf, sizeof(buf), "CH  : %d", targetTerkunci.channel);
-        ssd1306_draw_string(0, xSide, 33, buf, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, xSide, 33, buf, WHITE, BLACK);
 
         snprintf(buf, sizeof(buf), "SIG : %d dBm", targetTerkunci.rssi);
-        ssd1306_draw_string(0, xSide, 43, buf, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, xSide, 43, buf, WHITE, BLACK);
 
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
-        ssd1306_draw_string(0, 2, 55, "[<] BACK", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 55, "[<] BACK", BLACK, WHITE);
     } 
     else if (scannerState == 4) {
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-        ssd1306_draw_string(0, 43, 1, "ACTIONS", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 43, 1, "ACTIONS", BLACK, WHITE);
 
         for(int i = 0; i < 2; i++) {
             int yPos = 20 + (i * 15); 
@@ -230,12 +230,12 @@ void tampilkanWifiScanner() {
             oled_draw_bitmap(0, 25, yPos, currentIcon, 10, 10, colorTheme); 
             
             const char* teksAction = (i == 0) ? "ATTACK" : "DETAILS";
-            ssd1306_draw_string(0, 45, yPos + 1, (char*)teksAction, colorTheme, bgColor);
+            ssd1306_draw_string_adafruit(0, 45, yPos + 1, (char*)teksAction, colorTheme, bgColor);
         }
 
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
-        ssd1306_draw_string(0, 2, 55, "< BACK", BLACK, WHITE);
-        ssd1306_draw_string(0, 53, 55, "[OK]", BLACK, WHITE); 
+        ssd1306_draw_string_adafruit(0, 2, 55, "< BACK", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 53, 55, "[OK]", BLACK, WHITE); 
     }
     ssd1306_refresh(0, true);
 }
@@ -246,33 +246,33 @@ void tampilkanDeauthScreen() {
     
     if (deauthState == 0) {
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-        ssd1306_draw_string(0, 26, 1, "DEAUTH ATTACK", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 26, 1, "DEAUTH ATTACK", BLACK, WHITE);
         
-        ssd1306_draw_string(0, 10, 25, "Attack Target?", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 10, 25, "Attack Target?", WHITE, BLACK);
         
         char shortSsid[16];
         strncpy(shortSsid, targetTerkunci.ssid, 15);
         shortSsid[15] = '\0';
-        ssd1306_draw_string(0, 10, 35, shortSsid, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 10, 35, shortSsid, WHITE, BLACK);
 
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
-        ssd1306_draw_string(0, 2, 55, "< NO", BLACK, WHITE);
-        ssd1306_draw_string(0, 95, 55, "YES >", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 55, "< NO", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 95, 55, "YES >", BLACK, WHITE);
     } 
     else if (deauthState == 1) {
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-        ssd1306_draw_string(0, 2, 1, "ATTACKING...", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 1, "ATTACKING...", BLACK, WHITE);
 
         snprintf(buf, sizeof(buf), "Target: %s", targetTerkunci.ssid);
-        ssd1306_draw_string(0, 0, 20, buf, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 0, 20, buf, WHITE, BLACK);
         snprintf(buf, sizeof(buf), "Ch: %d", targetTerkunci.channel);
-        ssd1306_draw_string(0, 0, 30, buf, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 0, 30, buf, WHITE, BLACK);
         
         int bar = (millis() * 20) % 128; 
         ssd1306_draw_hline(0, 0, 45, bar, WHITE);
         
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
-        ssd1306_draw_string(0, 2, 55, "< STOP ATTACK", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 55, "< STOP ATTACK", BLACK, WHITE);
     }
     ssd1306_refresh(0, true);
 }
@@ -282,7 +282,7 @@ void tampilkanBrightness() {
     char buf[16];
 
     ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-    ssd1306_draw_string(0, 35, 1, "BRIGHTNESS", BLACK, WHITE);
+    ssd1306_draw_string_adafruit(0, 35, 1, "BRIGHTNESS", BLACK, WHITE);
 
     ssd1306_draw_rectangle(0, 14, 28, 100, 12, WHITE); 
     
@@ -291,11 +291,11 @@ void tampilkanBrightness() {
 
     int persen = map(brightnessValue, 0, 255, 0, 100);
     snprintf(buf, sizeof(buf), "%d%%", persen);
-    ssd1306_draw_string(0, 55, 45, buf, WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 55, 45, buf, WHITE, BLACK);
 
     ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
-    ssd1306_draw_string(0, 5, 55, "[<] BACK", BLACK, WHITE);
-    ssd1306_draw_string(0, 75, 55, "[UP/DN] SET", BLACK, WHITE);
+    ssd1306_draw_string_adafruit(0, 5, 55, "[<] BACK", BLACK, WHITE);
+    ssd1306_draw_string_adafruit(0, 75, 55, "[UP/DN] SET", BLACK, WHITE);
 
     ssd1306_refresh(0, true);
 }
@@ -310,26 +310,26 @@ void tampilkanSpamScreen(const char* judul, const char* subTeks) {
     
     if (spamState == 0) {
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-        ssd1306_draw_string(0, 2, 1, (char*)judul, BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 1, (char*)judul, BLACK, WHITE);
         
-        ssd1306_draw_string(0, 10, 25, (char*)subTeks, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 10, 25, (char*)subTeks, WHITE, BLACK);
 
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
-        ssd1306_draw_string(0, 2, 55, "< NO", BLACK, WHITE);
-        ssd1306_draw_string(0, 95, 55, "YES >", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 55, "< NO", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 95, 55, "YES >", BLACK, WHITE);
     } 
     else if (spamState == 1) {
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-        ssd1306_draw_string(0, 2, 1, "RUNNING...", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 1, "RUNNING...", BLACK, WHITE);
 
         snprintf(buf, sizeof(buf), "Mode: %s", subTeks);
-        ssd1306_draw_string(0, 0, 25, buf, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 0, 25, buf, WHITE, BLACK);
         
         int bar = (millis() * 30) % 128;
         ssd1306_draw_hline(0, 0, 45, bar, WHITE);
         
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
-        ssd1306_draw_string(0, 2, 55, "< STOP", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 55, "< STOP", BLACK, WHITE);
     }
     ssd1306_refresh(0, true);
 }

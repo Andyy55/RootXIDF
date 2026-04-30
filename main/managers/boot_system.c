@@ -63,12 +63,12 @@ void tampilkanIntroAnime() {
     ssd1306_draw_vline(0, 65, 0, 64, WHITE);
 
     // Teks Firmware di Kanan (id, x, y, text, fg, bg)
-    ssd1306_draw_string(0, 68, 6, "[FIRMWARE]", WHITE, BLACK);
-    ssd1306_draw_string(0, 67, 18, "Name:RootX", WHITE, BLACK);
-    ssd1306_draw_string(0, 67, 28, "Ver :1.0.0", WHITE, BLACK);
-    ssd1306_draw_string(0, 67, 38, "By  :Andyy", WHITE, BLACK);
-    ssd1306_draw_string(0, 67, 48, "Mode:GOD", WHITE, BLACK);
-    ssd1306_draw_string(0, 67, 56, "Stat:Opt", WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 68, 6, "[FIRMWARE]", WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 67, 18, "Name:RootX", WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 67, 28, "Ver :1.0.0", WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 67, 38, "By  :Andyy", WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 67, 48, "Mode:GOD", WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 67, 56, "Stat:Opt", WHITE, BLACK);
 
     ssd1306_refresh(0, true);
     vTaskDelay(pdMS_TO_TICKS(2500));
@@ -86,7 +86,7 @@ void ketikTeks(const char* teks, int x, int y) {
         hurufTemp[0] = teks[i]; 
         
         // Pake aturan Baoshi
-        ssd1306_draw_string(0, currentX, y, hurufTemp, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, currentX, y, hurufTemp, WHITE, BLACK);
         ssd1306_refresh(0, true);
         
         currentX += 6; 
