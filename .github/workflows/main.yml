@@ -17,10 +17,18 @@ jobs:
 
       - name: Build Firmware
         run: |
-          # Paksa pake sdkconfig sakti lu
+          # 1. Aktifkan environment IDF (Kunci biar idf.py ketemu)
+          . $IDF_PATH/export.sh
+          
+          # 2. Paksa pake sdkconfig sakti lu
           cp sdkconfig.defaults sdkconfig
+          
+          # 3. Set target ke S3
           idf.py set-target esp32s3
+          
+          # 4. Build sampai jadi .bin
           idf.py build
+
 
       - name: Upload binary artifacts
         uses: actions/upload-artifact@v4
