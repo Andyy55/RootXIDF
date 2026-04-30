@@ -29,6 +29,7 @@
 #include "fonts.h"
 #include "stddef.h"
 #include "ssd1306.h"
+#include "font_adafruit.h"
 #include "stdlib.h"
 #include "string.h"
 
@@ -787,54 +788,112 @@ void ssd1306_select_font(uint8_t id, uint8_t idx)
         ctx->font = fonts[idx];
 }
 
+void ssd1306_draw_string_adafruit(uint8_t id, uint8_t x, uint8_t y, const char *str, ssd1306_color_t foreground, ssd1306_color_t background)
+{
+    while (*str) 
+    {
+        // Gambar per karakter dan geser x sebanyak 6 pixel (lebar font + spasi)
+        x += ssd1306_draw_char_adafruit(id, x, y, (unsigned char)*str, foreground, background);
+        str++;
+        
+        // Opsional: Cek kalau x sudah mentok lebar layar (128) bisa buat line wrap
+        if (x > 122) break; 
+    }
+}
+
+
+// Fungsi khusus untuk ngebaca font Adafruit (5x8 Vertikal)
+uint8_t ssd1306_draw_char_adafruit(uint8_t id, uint8_t x, uint8_t y, unsigned char c, ssd1306_color_t foreground, ssd1306_color_t background)
+{
+    oled_i2c_ctx *ctx = _ctxs[id];
+    if (ctx == NULL) return 0;
+
+    // Loop 5 kolom (Lebar font Adafruit itu fix 5 pixel)
+    for (uint8_t i = 0; i < 5; i++) 
+    {
+        // Ambil data satu kolom (1 byte = 8 pixel vertikal)
+        // font_adafruit adalah nama array yang ada di file .h tadi
+        uint8_t line = font_adafruit[(c * 5) + i]; 
+        
+        // Loop 8 baris ke bawah (karena 1 byte = 8 bit)
+        for (uint8_t j = 0; j < 8; j++) 
+        {
+            if (line & 0x01) // Cek bit paling rendah
+            {
+                ssd1306_draw_pixel(id, x + i, y + j, foreground);
+            } 
+            else if (background != SSD1306_COLOR_TRANSPARENT) 
+            {
+                ssd1306_draw_pixel(id, x + i, y + j, background);
+            }
+            line >>= 1; // Geser ke bit berikutnya
+        }
+    }
+
+    // Kasih spasi 1 pixel di sebelah kanan biar nggak mepet (Total lebar jadi 6)
+    if (background != SSD1306_COLOR_TRANSPARENT) 
+    {
+        for (uint8_t j = 0; j < 8; j++) 
+        {
+            ssd1306_draw_pixel(id, x + 5, y + j, background);
+        }
+    }
+
+    return 6; // Return lebar total karakter + spasi
+}
+
 
 // return character width
 uint8_t ssd1306_draw_char(uint8_t id, uint8_t x, uint8_t y, unsigned char c, ssd1306_color_t foreground, ssd1306_color_t background)
 {
     oled_i2c_ctx *ctx = _ctxs[id];
-    if (ctx == NULL || ctx->font == NULL) return 0;
+    uint8_t i, j;
+    const uint8_t *bitmap;
+    uint8_t line=0;
 
+    if (ctx == NULL)
+        return 0;
+
+    if (ctx->font == NULL)
+        return 0;
+
+    // we always have space in the font set
     if ((c < ctx->font->char_start) || (c > ctx->font->char_end))
         c = ' ';
-    
-    c = c - ctx->font->char_start;
-    const uint8_t *bitmap = ctx->font->bitmap + ctx->font->char_descriptors[c].offset;
-    uint8_t char_w = ctx->font->char_descriptors[c].width;
-    uint8_t char_h = ctx->font->height;
-
-    // DETEKSI FONT BERDASARKAN STRUKTUR BITMAP
-    // Jika Tahoma (Tinggi > 8), dia horizontal stream
-    if (char_h > 8) {
-        uint16_t bit_count = 0;
-        for (uint8_t j = 0; j < char_h; j++) {
-            for (uint8_t i = 0; i < char_w; i++) {
-                // Ambil bit ke-n dari aliran bitmap
-                uint8_t byte = bitmap[bit_count / 8];
-                uint8_t bit_mask = 0x80 >> (bit_count % 8);
-                
-                if (byte & bit_mask) {
-                    ssd1306_draw_pixel(id, x + i, y + j, foreground);
-                } else if (background != SSD1306_COLOR_TRANSPARENT) {
-                    ssd1306_draw_pixel(id, x + i, y + j, background);
-                }
-                bit_count++;
+    c = c - ctx->font->char_start;   // c now become index to tables
+    bitmap = ctx->font->bitmap + ctx->font->char_descriptors[c].offset;
+    for (j = 0; j < ctx->font->height; ++j)
+    {
+        for (i = 0; i < ctx->font->char_descriptors[c].width; ++i)
+        {
+            if (i % 8 == 0)
+            {
+                line = bitmap[(ctx->font->char_descriptors[c].width + 7) / 8 * j + i / 8]; // line data
             }
-        }
-    } 
-    // Jika GLCD 5x7, dia vertikal murni
-    else {
-        for (uint8_t i = 0; i < char_w; i++) {
-            uint8_t line = bitmap[i]; 
-            for (uint8_t j = 0; j < char_h; j++) {
-                if (line & (1 << j)) {
-                    ssd1306_draw_pixel(id, x + i, y + j, foreground);
-                } else if (background != SSD1306_COLOR_TRANSPARENT) {
+            if (line & 0x80)
+            {
+                ssd1306_draw_pixel(id, x + i, y + j, foreground);
+            }
+            else
+            {
+                switch (background)
+                {
+                case SSD1306_COLOR_TRANSPARENT:
+                    // Not drawing for transparent background
+                    break;
+                case SSD1306_COLOR_WHITE:
+                case SSD1306_COLOR_BLACK:
                     ssd1306_draw_pixel(id, x + i, y + j, background);
+                    break;
+                case SSD1306_COLOR_INVERT:
+                    // I don't know why I need invert background
+                    break;
                 }
             }
+            line = line << 1;
         }
     }
-    return char_w;
+    return (ctx->font->char_descriptors[c].width);
 }
 
 
