@@ -83,10 +83,17 @@ void app_main(void) {
     // 2. Setup Layar (Pake library Software I2C lu)
     // NOTE: Cek fungsi aslinya di file ssd1306.h lu, biasanya namanya ssd1306_init()
     // ssd1306_init(ID, SCL_PIN, SDA_PIN);
-ssd1306_init(0, 9, 8); 
-ssd1306_select_font(0, 0); // 0 = Index font bawaan library
-ssd1306_clear(0);
-ssd1306_refresh(0, true);
+// 1. Nyalain Mesin OLED
+if (ssd1306_init(0, 9, 8)) {
+    vTaskDelay(pdMS_TO_TICKS(100)); // <--- KUNCI SAKTI: Kasih napas 100ms
+    ssd1306_select_font(0, 0);
+    ssd1306_clear(0);
+    ssd1306_refresh(0, true);
+    ESP_LOGI("RootX", "OLED Ready!");
+} else {
+    ESP_LOGE("RootX", "OLED Gagal Inisialisasi!");
+}
+
 
     
     // (Biar layar muter 180 derajat, nanti cari fungsi flip di library barunya)
