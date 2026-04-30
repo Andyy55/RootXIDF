@@ -1,4 +1,4 @@
-name: Build RootX v6.0
+name: Build RootX v6.0 Fast
 
 on:
   push:
@@ -11,7 +11,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install ESP-IDF v6.0
+      # --- INI KUNCINYA: CACHE IDF ---
+      - name: Cache ESP-IDF
+        id: cache-idf
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/esp-idf
+            ~/.espressif
+          key: esp-idf-v6.0-${{ runner.os }}-v1
+          restore-keys: |
+            esp-idf-v6.0-${{ runner.os }}-
+
+      - name: Install ESP-IDF v6.0 (Hanya Jalan Kalau Cache Gak Ada)
+        if: steps.cache-idf.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y wget git flex bison gperf python3-pip python3-setuptools cmake ninja-build ccache libffi-dev libssl-dev dfu-util
@@ -21,29 +34,21 @@ jobs:
       - name: Patch gdbstub Source
         run: |
           python3 -c "import os,pathlib; p=pathlib.Path(os.path.expanduser('~/esp-idf'))/'components/esp_gdbstub/src/gdbstub.c'; s=p.read_text(encoding='utf-8'); s=s.replace('#if (CONFIG_ESP_SYSTEM_GDBSTUB_RUNTIME || CONFIG_ESP_GDBSTUB_SUPPORT_TASKS)', '#if 1'); p.write_text(s, encoding='utf-8')"
-
+          
       - name: Build Firmware
         run: |
-          # 1. Masuk ke folder hasil clone dan aktifkan
-          cd ~/esp-idf
-          ./install.sh
-          . ./export.sh
-          cd $GITHUB_WORKSPACE
+          . ~/esp-idf/export.sh
           
-          # 2. Patching pake path yang PASTI ADA
-          # Kita hajar file wifi_init.c di lokasi clone v6.0
+          # Patching pake cara yang aman buat Python one-liner
           python3 -c "import os; p=os.path.expanduser('~/esp-idf/components/esp_wifi/src/wifi_init.c'); \
-          if os.path.exists(p): \
-              s=open(p).read().replace('return ESP_ERR_WIFI_IF;', 'return ESP_OK;'); \
-              open(p,'w').write(s); \
-              print('Patch wifi_init.c Berhasil!')"
+          f=open(p,'r').read() if os.path.exists(p) else ''; \
+          open(p,'w').write(f.replace('return ESP_ERR_WIFI_IF;', 'return ESP_OK;')) if f else print('File not found')"
+          
+          echo "Patch Selesai, Lanjut Build..."
 
-          # 3. Build Project
           cp sdkconfig.defaults sdkconfig
           idf.py set-target esp32s3
-          idf.py clean
           idf.py build
-
 
 
       - name: Upload Bin
@@ -55,4 +60,6 @@ jobs:
             build/partition_table/partition-table.bin
             build/*.bin
             build/flashing_args
+
+
 
