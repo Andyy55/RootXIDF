@@ -802,23 +802,27 @@ uint8_t ssd1306_draw_char(uint8_t id, uint8_t x, uint8_t y, unsigned char c, ssd
     uint8_t char_w = ctx->font->char_descriptors[c].width;
     uint8_t char_h = ctx->font->height;
 
-    // Logika adaptif berdasarkan tinggi font
-    // Tahoma 8pt tingginya 11, GLCD tingginya 7 atau 8
+    // DETEKSI FONT BERDASARKAN STRUKTUR BITMAP
+    // Jika Tahoma (Tinggi > 8), dia horizontal stream
     if (char_h > 8) {
-        // PAKAI LOGIKA HORIZONTAL (Untuk Tahoma)
-        uint8_t bytes_per_row = (char_w + 7) / 8;
-        for (uint8_t j = 0; j < char_h; ++j) {
-            for (uint8_t i = 0; i < char_w; ++i) {
-                uint8_t byte = bitmap[j * bytes_per_row + (i / 8)];
-                if (byte & (0x80 >> (i % 8))) {
+        uint16_t bit_count = 0;
+        for (uint8_t j = 0; j < char_h; j++) {
+            for (uint8_t i = 0; i < char_w; i++) {
+                // Ambil bit ke-n dari aliran bitmap
+                uint8_t byte = bitmap[bit_count / 8];
+                uint8_t bit_mask = 0x80 >> (bit_count % 8);
+                
+                if (byte & bit_mask) {
                     ssd1306_draw_pixel(id, x + i, y + j, foreground);
                 } else if (background != SSD1306_COLOR_TRANSPARENT) {
                     ssd1306_draw_pixel(id, x + i, y + j, background);
                 }
+                bit_count++;
             }
         }
-    } else {
-        // PAKAI LOGIKA VERTIKAL (Untuk GLCD 5x7)
+    } 
+    // Jika GLCD 5x7, dia vertikal murni
+    else {
         for (uint8_t i = 0; i < char_w; i++) {
             uint8_t line = bitmap[i]; 
             for (uint8_t j = 0; j < char_h; j++) {
@@ -832,6 +836,7 @@ uint8_t ssd1306_draw_char(uint8_t id, uint8_t x, uint8_t y, unsigned char c, ssd
     }
     return char_w;
 }
+
 
 
 
