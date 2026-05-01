@@ -112,12 +112,12 @@ long map(long x, long in_min, long in_max, long out_min, long out_max) {
 // ==========================================
 // DATA MENU 
 // ==========================================
-const unsigned char* iconListWiFi[] = { iconSmall_scan, iconSmall_spam, iconSmall_sniff, iconSmall_wifi };
+const unsigned char* iconListWiFi[] = { iconSmall_scan, iconSmall_sniff, iconSmall_conn, iconSmall_spam, iconSmall_wifi };
 const unsigned char* iconListBLE[]  = { iconSmall_scan, iconSmall_apple, iconSmall_android };
 const unsigned char* iconListIR[]   = { iconSmall_ir, iconSmall_tv, iconSmall_ac, iconSmall_lock, iconSmall_saved };
 const unsigned char* iconListSet[]  = { iconSmall_bright, iconSmall_wifi, iconSmall_info, iconSmall_repeat };
 
-const char* subMenuWiFi[] = { "Scan WiFi", "Beacon Spam", "List Scan", "RickRoll SSID" };
+const char* subMenuWiFi[] = { "Scan WiFi", "List Scan", "Connected WiFi", "Beacon Spam", "RickRoll SSID" };
 const char* subMenuBLE[]  = { "BLE Scanner", "Spam Apple", "Spam Android" };
 const char* subMenuIR[]   = { "Read Signal", "TV B-Gone", "AC Remote", "Brute Force", "Saved Remotes" };
 const char* subMenuSet[]  = { "Brightness", "WiFi Setup", "About RootX", "Reboot" };

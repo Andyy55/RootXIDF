@@ -28,7 +28,6 @@ void handleNavigasiDeauth(int btn);
 void handleNavigasiSpam(int btn);
 void handleNavigasiScanSta(int btn);
 void handleInputPassword(int btn);
-void handleInputPassword(int btn);
 
 void handleJoystick() {
     static uint32_t lastPress = 0;
@@ -110,7 +109,7 @@ lastPress = input_millis();
     else {
         if (btn == BTN_DOWN) {
             int limitMenu = 0; 
-            if(currentMenu == 0)      limitMenu = 4; 
+            if(currentMenu == 0)      limitMenu = 5; 
             else if(currentMenu == 1) limitMenu = 3;
             else if(currentMenu == 2) limitMenu = 5;
             else                      limitMenu = 4;
@@ -136,18 +135,20 @@ lastPress = input_millis();
             if (currentMenu == 0 && currentSub == 0) {
                 appMode = 1;      
                 scannerState = 0; 
-            } else if (currentMenu == 0 && currentSub == 2) {
+            } else if (currentMenu == 0 && currentSub == 1) {
                 appMode = 1;
                 scannerState = 2;     
                 cursorInScanner = 0;  
                 scrollPosScanner = 0; 
             } else if (currentMenu == 3 && currentSub == 0) { 
                 appMode = 3; 
-            } else if (currentMenu == 0 && currentSub == 1) {
+            } else if (currentMenu == 0 && currentSub == 2) {
+                appMode = 9;
+            } else if (currentMenu == 0 && currentSub == 3) {
                 aktifModeSpam = 1; 
                 appMode = 4;       
                 spamState = 0;
-            } else if (currentMenu == 0 && currentSub == 3) {
+            } else if (currentMenu == 0 && currentSub == 4) {
                 aktifModeSpam = 2; 
                 appMode = 4;
                 spamState = 0;
@@ -165,36 +166,7 @@ lastPress = input_millis();
 
 
 
-void handleInputPassword(int btn) {
-    char currentCh = inputPassword[cursorPass];
 
-    if (btn == BTN_UP) {
-        // Naik ke karakter selanjutnya (A->B, dst)
-        if (currentCh == 0) currentCh = 33; // Mulai dari '!'
-        else if (currentCh < 126) currentCh++;
-        inputPassword[cursorPass] = currentCh;
-    } 
-    else if (btn == BTN_DOWN) {
-        // Turun karakter (B->A)
-        if (currentCh > 33) currentCh--;
-        inputPassword[cursorPass] = currentCh;
-    }
-    else if (btn == BTN_RIGHT) {
-        // Geser ke karakter berikutnya
-        if (cursorPass < 63) cursorPass++;
-    }
-    else if (btn == BTN_LEFT) {
-        // Hapus karakter (Backspace)
-        if (cursorPass > 0) {
-            inputPassword[cursorPass] = '\0';
-            cursorPass--;
-        }
-    }
-    else if (btn == BTN_OK) {
-        // GAS KONEK!
-        triggerConnect = true;
-    }
-}
 
 void handleNavigasiScanner(int btn) {
     if (scannerState == 0) {
@@ -371,7 +343,7 @@ void handleInputPassword(int btn) {
             cursorPass--; // Mundur kursor
         } else {
             // Kalo kursor di posisi 0 dipencet kiri, balik ke menu action
-            appMode = 2; // Ganti ke mode scanner lu (biasanya 2 atau sesuai settingan lu)
+            appMode = 1; // Ganti ke mode scanner lu (biasanya 2 atau sesuai settingan lu)
         }
     }
     else if (btn == BTN_OK) {
