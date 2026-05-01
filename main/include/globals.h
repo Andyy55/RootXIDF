@@ -31,6 +31,7 @@ typedef struct {
 // --- EXTERN VARIABEL GLOBAL ---
 // --- EXTERN VARIABEL GLOBAL ---
 extern bool triggerTrack; // Tambahin ini di deretan extern bool
+extern int deauthProgress;
 extern bool inSubMenu;
 extern int currentMenu;
 extern int currentSub;
