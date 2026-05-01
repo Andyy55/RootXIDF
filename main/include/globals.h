@@ -18,6 +18,7 @@ typedef struct {
   int rssi;
   int channel;
   char encrypt[20];
+  bool is_open;
   char mac[18];
 } WiFiData;
 
@@ -30,6 +31,18 @@ typedef struct {
 
 // --- EXTERN VARIABEL GLOBAL ---
 // --- EXTERN VARIABEL GLOBAL ---
+extern bool isWiFiConnected;
+extern char connSSID[33];
+extern int connRSSI;
+extern int connCH;
+extern bool triggerDisconnect;
+// Update submenu WiFi
+extern const char* subMenuWiFi[]; 
+extern int statusKoneksi; // 0: Connecting, 1: Berhasil, 2: Gagal
+
+extern char inputPassword[64];
+extern int cursorPass; // Posisi karakter yang lagi diedit
+extern bool triggerConnect; 
 extern bool triggerTrack; // Tambahin ini di deretan extern bool
 extern int deauthProgress;
 extern bool inSubMenu;
