@@ -4,6 +4,7 @@
 #include "driver/gpio.h"
 #include "esp_timer.h"
 #include "globals.h"
+#include "esp_wifi.h"
 
 // Pengganti String biar enteng dan cepat!
 #define BTN_NONE  0
