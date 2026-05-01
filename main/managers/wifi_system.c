@@ -264,14 +264,14 @@ else if (triggerConnect) {
             
             for (int i = 0; i < totalWiFi; i++) {
                 listWiFi[i].id = i;
-                sanitize_ssid(listWiFi[i].ssid, (char*)ap_records[i].ssid, 32);
+                sanitize_ssid((uint8_t*)ap_records[i].ssid, listWiFi[i].ssid, sizeof(listWiFi[i].ssid));
                 listWiFi[i].rssi = ap_records[i].rssi;
                 listWiFi[i].channel = ap_records[i].primary;
-                if (ap_records[i].authmode = WIFI_AUTH_OPEN) {
-                listWiFi[i].is_open == true;
+                if (ap_records[i].authmode == WIFI_AUTH_OPEN) {
+                listWiFi[i].is_open = true;
                 strcpy(listWiFi[i].encrypt, "Open");
                 } else { 
-                listWiFi[i].is_open == false;
+                listWiFi[i].is_open = false;
                 strcpy(listWiFi[i].encrypt, "WPA2 / WPA3");
                 }
                 // Format MAC Address manual
