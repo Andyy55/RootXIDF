@@ -268,10 +268,10 @@ else if (triggerConnect) {
                 listWiFi[i].rssi = ap_records[i].rssi;
                 listWiFi[i].channel = ap_records[i].primary;
                 if (ap_records[i].authmode = WIFI_AUTH_OPEN) {
-                listWiFi[i].is_open == true
+                listWiFi[i].is_open == true;
                 strcpy(listWiFi[i].encrypt, "Open");
                 } else { 
-                listWiFi[i].is_open == false
+                listWiFi[i].is_open == false;
                 strcpy(listWiFi[i].encrypt, "WPA2 / WPA3");
                 }
                 // Format MAC Address manual
