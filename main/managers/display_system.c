@@ -463,24 +463,12 @@ void tampilkanStationScanner() {
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 22, 1, "TARGET DETAILS", BLACK, WHITE);
 
-        snprintf(buf, sizeof(buf), "MAC: %02X:%02X:%02X:%02X:%02X:%02X", 
+        snprintf(buf, sizeof(buf), "MC:%02X:%02X:%02X:%02X:%02X:%02X", 
                  targetSta.mac[0], targetSta.mac[1], targetSta.mac[2],
                  targetSta.mac[3], targetSta.mac[4], targetSta.mac[5]);
                  
-        int maxChar = 14;
-                    int len = strlen(buf);
-                    char textShow[16] = {0};
-
-                    if (i == cursorInScanner && len > maxChar) {
-                        int kelebihan = len - maxChar;
-                        int offset = (millis() / 300) % (kelebihan + 4); 
-                        if (offset > kelebihan) offset = kelebihan; 
-                        strncpy(textShow, buf + offset, maxChar);
-                    } else {
-                        if (len > maxChar) strncpy(textShow, buf, maxChar);
-                        else               strcpy(textShow, buf);
-                    }
-        ssd1306_draw_string_adafruit(0, 5, 15, textShow, WHITE, BLACK);
+        
+        ssd1306_draw_string_adafruit(0, 5, 17, buf, WHITE, BLACK);
         
 
         snprintf(buf, sizeof(buf), "RSSI: %d dBm", targetSta.rssi);
