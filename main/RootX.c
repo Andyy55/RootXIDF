@@ -43,6 +43,18 @@ int ieee80211_raw_frame_sanity_check(int32_t arg, int32_t arg2, int32_t arg3) {
 bool triggerTrack = false;
 
 // Di dalam while(1)
+// --- VARIABEL KONEKSI WIFI (BIAR LINKER GAK NGAMUK) ---
+char inputPassword[64] = {0};
+int cursorPass = 0;
+int statusKoneksi = 0;
+bool isWiFiConnected = false;
+char connSSID[33] = {0};
+int connCH = 0;
+int connRSSI = 0;
+bool triggerConnect = false;
+bool triggerDisconnect = false;
+
+
 
 int deauthProgress = 0;
 bool adaTargetSta = false;
