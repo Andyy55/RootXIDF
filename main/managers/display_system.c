@@ -21,8 +21,6 @@ typedef struct {
     float x, y, z;
 } Star;
 
-Star stars[15];
-
 void initStars() {
     for (int i = 0; i < 15; i++) {
         stars[i].x = (rand() % 128) - 64;
