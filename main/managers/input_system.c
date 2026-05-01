@@ -25,6 +25,7 @@ uint32_t input_millis() {
 void handleNavigasiScanner(int btn);
 void handleNavigasiDeauth(int btn);
 void handleNavigasiSpam(int btn);
+void handleNavigasiScanSta(int btn);
 
 void handleJoystick() {
     static uint32_t lastPress = 0;
