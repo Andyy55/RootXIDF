@@ -27,7 +27,7 @@ bool init_sdcard() {
 
     // Opsi mounting filesystem
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-        .format_if_mount_failed = true, // Kalo gagal/corrupt, format otomatis
+        .format_if_mount_failed = false, // Kalo gagal/corrupt, format otomatis
         .max_files = 5,
         .allocation_unit_size = 16 * 1024
     };

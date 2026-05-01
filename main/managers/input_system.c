@@ -44,6 +44,7 @@ void handleJoystick() {
     if (appMode == 1) { handleNavigasiScanner(btn); lastPress = input_millis(); return; }
     if (appMode == 2) { handleNavigasiDeauth(btn);  lastPress = input_millis(); return; }
     if (appMode == 4) { handleNavigasiSpam(btn);    lastPress = input_millis(); return; } 
+     if (appMode == 5) { handleNavigasiScanSta(btn); lastPress = input_millis(); return; }
     
     // Mode 3 (Brightness)
     if (appMode == 3) {
@@ -171,21 +172,80 @@ void handleNavigasiScanner(int btn) {
     else if (scannerState == 3) {
         if (btn == BTN_LEFT) scannerState = 4; 
     }
-    else if (scannerState == 4) {
+      else if (scannerState == 4) {
+        // Navigasi Naik/Turun
+        if (btn == BTN_UP) {
+            contextCursor = (contextCursor > 0) ? contextCursor - 1 : 2; // Batas atas ke 2
+        } 
+        else if (btn == BTN_DOWN) {
+            contextCursor = (contextCursor < 2) ? contextCursor + 1 : 0; // Batas bawah ke 2
+        }
+        
+        else if (btn == BTN_OK) {
+        if (contextCursor == 0) { appMode = 2; deauthState = 0; } 
+        else if (contextCursor == 1) { appMode = 5; scannerStateSta = 0; contextCursor = 0; }
+        else if (contextCursor == 2) { // TRACK
+            appMode = 6; 
+            triggerTrack = true; // Nyalain update RSSI
+        }
+        else if (contextCursor == 3) { scannerState = 3; }
+    }
+        else if (btn == BTN_LEFT) scannerState = 2; 
+    }
+
+}
+
+void handleNavigasiScanSta(int btn) {
+    if (scannerStateSta == 0) {
+        if (btn == BTN_LEFT) appMode = 1; // Balik ke WiFi Scanner
+        else if (btn == BTN_RIGHT || btn == BTN_OK) {
+            totalStation = 0;
+            scannerStateSta = 1;
+            triggerScanSta = true;
+            scanStaDone = false;
+        }
+    } 
+    else if (scannerStateSta == 2) {
+        if (btn == BTN_LEFT) scannerStateSta = 0; // Mau scan lagi
+        else if (btn == BTN_UP) {
+            if (cursorInScanSta > 0) cursorInScanSta--; 
+            else if (scrollPosScanner > 0) scrollPosScanner--;
+        } 
+        else if (btn == BTN_DOWN) {
+            if (cursorInScanSta < 2 && (scrollPosScanner + cursorInScanSta) < (totalStation - 1)) cursorInScanSta++; 
+            else if ((scrollPosScanner + 3) < totalStation) scrollPosScanner++;
+        }
+        else if (btn == BTN_OK) {
+            if (totalStation > 0) {
+                targetLockedIdx = scrollPosScanner + cursorInScanSta; 
+                targetSta = listStation[targetLockedIdx];
+                adaTargetSta = true; 
+                scannerStateSta = 4;   
+                contextCursor = 0;  
+            }
+        }
+    } 
+    else if (scannerStateSta == 3) {
+        if (btn == BTN_LEFT || btn == BTN_OK) scannerStateSta = 4; 
+    } 
+    else if (scannerStateSta == 4) {
         if (btn == BTN_UP) contextCursor = (contextCursor > 0) ? contextCursor - 1 : 1; 
         else if (btn == BTN_DOWN) contextCursor = (contextCursor < 1) ? contextCursor + 1 : 0;
         else if (btn == BTN_OK) {
             if (contextCursor == 0) {
-                appMode = 2;     
-                deauthState = 0; 
+                // MULAI ATTACK KE HP
+                isDeauthSta = true; 
+                scannerStateSta = 0;
+                appMode = 2; // Pindah layar ke animasi Deauth
             } 
             else if (contextCursor == 1) {
-                scannerState = 3; 
+                scannerStateSta = 3; // Lihat Detail
             }
         }
-        else if (btn == BTN_LEFT) scannerState = 2; 
+        else if (btn == BTN_LEFT) scannerStateSta = 2; 
     }
 }
+
 
 void handleNavigasiDeauth(int btn) {
     if (deauthState == 0) { 
@@ -197,6 +257,7 @@ void handleNavigasiDeauth(int btn) {
     } 
     else if (deauthState == 1) { 
         if (btn == BTN_LEFT) { 
+            esp_wifi_stop(); 
             isDeauthing = false;
             deauthState = 0;
             appMode = 0; 
@@ -211,6 +272,7 @@ void handleNavigasiSpam(int btn) {
             isSpamming = true; 
         } 
         else if (btn == BTN_LEFT) { 
+            esp_wifi_stop(); 
             appMode = 0; 
             isSpamming = false;
             aktifModeSpam = 0; 

