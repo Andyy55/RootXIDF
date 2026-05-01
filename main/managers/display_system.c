@@ -13,13 +13,14 @@
 #define WHITE 1
 #define BLACK 0
 #define MAX_STARS 15
-Star stars[MAX_STARS];
-bool starInit = false;
+
 
 // --- DATA UNTUK ANIMASI BINTANG ---
 typedef struct {
     float x, y, z;
 } Star;
+Star stars[MAX_STARS];
+bool starInit = false;
 
 void initStars() {
     for (int i = 0; i < 15; i++) {
