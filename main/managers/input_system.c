@@ -28,6 +28,7 @@ void handleNavigasiDeauth(int btn);
 void handleNavigasiSpam(int btn);
 void handleNavigasiScanSta(int btn);
 void handleInputPassword(int btn);
+void handleInputPassword(int btn);
 
 void handleJoystick() {
     static uint32_t lastPress = 0;
@@ -48,6 +49,7 @@ void handleJoystick() {
     if (appMode == 2) { handleNavigasiDeauth(btn);  lastPress = input_millis(); return; }
     if (appMode == 4) { handleNavigasiSpam(btn);    lastPress = input_millis(); return; } 
      if (appMode == 5) { handleNavigasiScanSta(btn); lastPress = input_millis(); return; }
+     if (appMode == 8) { handleInputPassword(btn); lastPress = input_millis(); return; 
     
      
     if (appMode == 9) { // Misal appMode 11 itu Connected WiFi
@@ -67,7 +69,7 @@ lastPress = input_millis();
         if (btn == BTN_LEFT) { 
             esp_wifi_stop(); 
             isDeauthSta = false;
-            appMode = 2; 
+            appMode = 1; 
     }
     lastPress = input_millis();
         return;
@@ -238,10 +240,10 @@ void handleNavigasiScanner(int btn) {
       else if (scannerState == 4) {
         // Navigasi Naik/Turun
         if (btn == BTN_UP) {
-            contextCursor = (contextCursor > 0) ? contextCursor - 1 : 2; // Batas atas ke 2
+            contextCursor = (contextCursor > 0) ? contextCursor - 1 : 4; // Batas atas ke 2
         } 
         else if (btn == BTN_DOWN) {
-            contextCursor = (contextCursor < 3) ? contextCursor + 1 : 0; // Batas bawah ke 2
+            contextCursor = (contextCursor < 4) ? contextCursor + 1 : 0; // Batas bawah ke 2
         }
         
         else if (btn == BTN_OK) {
@@ -280,7 +282,7 @@ void handleNavigasiScanSta(int btn) {
         }
     } 
     else if (scannerStateSta == 2) {
-        if (btn == BTN_LEFT) appMode = 1; // Mau scan lagi
+        if (btn == BTN_LEFT) { appMode = 1;  triggerScanSta = false; }// Mau scan lagi
         else if (btn == BTN_UP) {
             if (cursorInScanSta > 0) cursorInScanSta--; 
             else if (scrollPosScanner > 0) scrollPosScanner--;
@@ -338,6 +340,49 @@ void handleNavigasiDeauth(int btn) {
         }
     }
 }
+
+void handleInputPassword(int btn) {
+    // Ambil karakter yang lagi ditunjuk kursor sekarang
+    char currentCh = inputPassword[cursorPass];
+
+    if (btn == BTN_UP) {
+        // Gulir karakter ke atas (A -> B -> C)
+        if (currentCh == 0) currentCh = 33; // Mulai dari '!'
+        else if (currentCh < 126) currentCh++;
+        inputPassword[cursorPass] = currentCh;
+    } 
+    else if (btn == BTN_DOWN) {
+        // Gulir karakter ke bawah (C -> B -> A)
+        if (currentCh > 33) currentCh--;
+        inputPassword[cursorPass] = currentCh;
+    }
+    else if (btn == BTN_RIGHT) {
+        // Geser kursor ke kanan buat huruf selanjutnya
+        if (cursorPass < 63) {
+            cursorPass++;
+            // Kalo geser ke kanan dan masih kosong, kasih default huruf 'a' (97)
+            if (inputPassword[cursorPass] == 0) inputPassword[cursorPass] = 97;
+        }
+    }
+    else if (btn == BTN_LEFT) {
+        // Fungsi Backspace / Geser ke kiri
+        if (cursorPass > 0) {
+            inputPassword[cursorPass] = '\0'; // Hapus huruf sekarang
+            cursorPass--; // Mundur kursor
+        } else {
+            // Kalo kursor di posisi 0 dipencet kiri, balik ke menu action
+            appMode = 2; // Ganti ke mode scanner lu (biasanya 2 atau sesuai settingan lu)
+        }
+    }
+    else if (btn == BTN_OK) {
+        // TOMBOL EKSEKUSI!
+        if (strlen(inputPassword) >= 8) { // Standar WiFi minimal 8 karakter
+            triggerConnect = true; 
+            // Nanti di wifi_system.c dia bakal liat triggerConnect ini dan statusKoneksi jadi 0
+        }
+    }
+}
+
 
 void handleNavigasiSpam(int btn) {
     if (spamState == 0) { 

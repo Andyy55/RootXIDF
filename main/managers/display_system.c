@@ -145,7 +145,7 @@ void tampilkanMenuLogo() {
     else                      bigIcon = logo_settings_32;
 
     int iconBounce = getBounce(300, 2); // Loncat 2 pixel
-    oled_draw_bitmap(0, 46, 20 + iconBounce, bigIcon, 32, 32, WHITE);
+    oled_draw_bitmap(0, 47, 20 + iconBounce, bigIcon, 32, 32, WHITE);
 
     // Font library ini ukurannya fix, jadi kita akalin kursornya aja
     ssd1306_draw_string_adafruit(0, 20, 30, "<", WHITE, BLACK);
@@ -168,38 +168,58 @@ void tampilkanMenuUtama() {
     
     ssd1306_draw_hline(0, 0, 9, 128, WHITE);
 
-    for(int i = 0; i < 5; i++) {
+        for(int i = 0; i < 5; i++) {
         int itemIndex = topMenu + i;
         if(itemIndex >= totalSub) break; 
 
         int yPos = 13 + (i * 10); 
         int textColor = WHITE;
         int bgColor = BLACK;
+        int iconBounce = 0; // Default: Icon diem kaga gerak
         
+        // --- LOGIKA MENU YANG DIPILIH (YANG ADA BLOK PUTIHNYA) ---
         if(itemIndex == currentSub) { 
+            // 1. Gambar blok putih dasar
             ssd1306_fill_rectangle(0, 0, yPos - 1, 128, 10, WHITE);
+            
+            // 2. Animasi "Data Stream / Glitch" di ujung kanan blok
+            // Bikin garis hitam jalan mundur dari X=125 ke X=105
+            int slide = (millis() / 40) % 20; 
+            int animX = 125 - slide;
+            
+            // Garis tipis ngalir
+            ssd1306_fill_rectangle(0, animX, yPos - 1, 2, 10, BLACK); 
+            // Kotak agak tebel ngikutin di belakangnya
+            ssd1306_fill_rectangle(0, animX + 6, yPos - 1, 4, 10, BLACK); 
+            
+            // 3. Icon loncat cuma buat menu ini aja
+            iconBounce = getBounce(200, 2); 
+            
             textColor = BLACK; 
             bgColor = WHITE;
         } 
         
+        // Setting Icon
         const unsigned char* iconSmall;
         if(currentMenu == 0)      iconSmall = iconListWiFi[itemIndex]; 
         else if(currentMenu == 1) iconSmall = iconListBLE[itemIndex];
         else if(currentMenu == 2) iconSmall = iconListIR[itemIndex];
         else                      iconSmall = iconListSet[itemIndex]; 
 
-        
-        int iconBounce = getBounce(300, 1); // Loncat 2 pixel
+        // Gambar Icon (Kalo diselect dia ada iconBounce-nya, kalo ngga ya + 0)
         oled_draw_bitmap(0, 2, (yPos - 1) + iconBounce, iconSmall, 10, 10, textColor);
         
+        // Setting Teks
         const char* textToPrint = "";
         if(currentMenu == 0)      textToPrint = subMenuWiFi[itemIndex];
         else if(currentMenu == 1) textToPrint = subMenuBLE[itemIndex];
         else if(currentMenu == 2) textToPrint = subMenuIR[itemIndex];
         else                      textToPrint = subMenuSet[itemIndex];
 
-        ssd1306_draw_string_adafruit(0, 18, yPos, (char*)textToPrint, textColor, bgColor);
+        // Gambar Teks (Kalo diselect, text-nya ikutan goyang dikit biar asik)
+        ssd1306_draw_string_adafruit(0, 18, yPos + iconBounce, (char*)textToPrint, textColor, bgColor);
     }
+
     ssd1306_refresh(0, true);
 }
 
@@ -293,7 +313,7 @@ void tampilkanTrackScreen() {
     // --- ANIMASI RADAR PULSING ---
     static int r = 0;
     r++; if(r > 20) r = 0;
-    ssd1306_draw_circle(0, 105, 15, r, WHITE);
+    ssd1306_draw_circle(0, 108, 18, r, WHITE);
     if(r > 5) ssd1306_draw_circle(0, 105, 15, r - 5, WHITE);
 
     // Data RSSI
@@ -667,8 +687,10 @@ void tampilkandeauthsta() {
         snprintf(buf, sizeof(buf), "Ch: %d", targetTerkunci.channel);
         ssd1306_draw_string_adafruit(0, 0, 30, buf, WHITE, BLACK);
         
+        int animasiProgress = (millis() / 30) % 100; 
+
+        drawLoadingBar(14, 45, 100, 8, animasiProgress);
         
-        drawLoadingBar(14, 45, 100, 8, deauthProgress);
         
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 2, 55, "< STOP ATTACK", BLACK, WHITE);
@@ -705,7 +727,9 @@ void tampilkanDeauthScreen() {
         ssd1306_draw_string_adafruit(0, 0, 30, buf, WHITE, BLACK);
         
         
-        drawLoadingBar(14, 45, 100, 8, deauthProgress);
+        dint animasiProgress = (millis() / 30) % 100; 
+
+        drawLoadingBar(14, 45, 100, 8, animasiProgress);
         
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 2, 55, "< STOP ATTACK", BLACK, WHITE);

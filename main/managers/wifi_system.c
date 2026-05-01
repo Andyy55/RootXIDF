@@ -53,9 +53,9 @@ void station_sniffer_cb(void *buf, wifi_promiscuous_pkt_type_t type) {
     uint8_t targetApMac[6];
     stringToMac(targetTerkunci.mac, targetApMac);
     
-    if (memcmp(frame + 10, targetApMac, 6) == 0) {
-        targetTerkunci.rssi = pkt->rx_ctrl.rssi;
-        }
+  //  if (memcmp(frame + 10, targetApMac, 6) == 0) {
+    //    targetTerkunci.rssi = pkt->rx_ctrl.rssi;
+    //    }
 
     uint8_t *addr1 = frame + 4;  
     uint8_t *addr2 = frame + 10; 
@@ -88,6 +88,19 @@ void station_sniffer_cb(void *buf, wifi_promiscuous_pkt_type_t type) {
     }
 }
 
+void track_sniffer_cb(void *buf, wifi_promiscuous_pkt_type_t type) {
+    wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)buf;
+    uint8_t *frame = pkt->payload;
+
+    uint8_t targetApMac[6];
+    stringToMac(targetTerkunci.mac, targetApMac);
+
+    // Addr2 (Source MAC) di frame WiFi ada di offset 10
+    // Kalo yang ngirim adalah router target kita, sikat nilai RSSI-nya!
+    if (memcmp(frame + 10, targetApMac, 6) == 0) {
+        targetTerkunci.rssi = pkt->rx_ctrl.rssi;
+    }
+}
 
 
 void sendBeacon(const char* ssid) {
@@ -180,6 +193,7 @@ void loopWiFi(void * pvParameters) {
 else if (triggerConnect) {
     statusKoneksi = 0; // Set ke status "Connecting"
     appMode = 10;      // Paksa layar pindah ke status koneksi
+    esp_wifi_set_promiscuous(false);
     
     esp_wifi_stop();
     esp_wifi_set_mode(WIFI_MODE_STA);
@@ -197,6 +211,10 @@ else if (triggerConnect) {
         vTaskDelay(pdMS_TO_TICKS(2000)); 
         isWiFiConnected = true;
         statusKoneksi = 1; // Berhasil
+        esp_netif_ip_info_t ip_info;
+        esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"), &ip_info);
+        printf("IP Address: " IPSTR "\n", IP2STR(&ip_info.ip));
+
     } else {
         isWiFiConnected = false;
         statusKoneksi = 2; // Gagal
@@ -286,20 +304,29 @@ else if (triggerConnect) {
             sedang_scan = false;
             scanDone = true;     
             triggerScan = false; 
-        } else if (triggerTrack) {
-    // Kita scan cepet di channel target buat update RSSI
-    uint8_t targetMac[6];
-    stringToMac(targetTerkunci.mac, targetMac);
-    
-    // Scan sebentar
-    esp_wifi_set_channel(targetTerkunci.channel, WIFI_SECOND_CHAN_NONE);
-    vTaskDelay(pdMS_TO_TICKS(100)); // Update tiap 100ms biar kerasa live
-    
-    // (Fungsi scan wifi bawaan bakal otomatis update rssi di listWiFi/targetTerkunci)
-}
+        }         else if (triggerTrack) {
+            static bool trackUdahSetup = false;
+            if (!trackUdahSetup) {
+                esp_wifi_stop();
+                esp_wifi_set_mode(WIFI_MODE_STA);
+                esp_wifi_start();
+                
+                // Pasang kuping sniffer khusus Track
+                esp_wifi_set_promiscuous(false);
+                esp_wifi_set_promiscuous_rx_cb(&track_sniffer_cb);
+                esp_wifi_set_promiscuous(true);
+                
+                // Kunci channel ke channel target
+                esp_wifi_set_channel(targetTerkunci.channel, WIFI_SECOND_CHAN_NONE);
+                trackUdahSetup = true;
+            }
+            // Biarin sniffer kerja di background, layar lu bakal update sendiri
+            vTaskDelay(pdMS_TO_TICKS(100)); 
+        }
+
 
                     // --- 1. BLOK SCAN STATION (Kunci Channel) ---
-        if (triggerScanSta) {
+       else if (triggerScanSta) {
             esp_wifi_set_promiscuous(false);
             esp_wifi_set_promiscuous_rx_cb(&station_sniffer_cb);
             esp_wifi_set_promiscuous(true);
@@ -425,7 +452,7 @@ else if (triggerConnect) {
         
 
         // --- MANAJEMEN RADIO WIFI (BIAR GAK PANAS) ---
-        if (!isSpamming && !isDeauthing && !triggerScan) {
+        if (!isSpamming && !isDeauthSta && !isDeauthing && !triggerScan) {
             wifi_mode_t currentMode;
             esp_wifi_get_mode(&currentMode);
 
