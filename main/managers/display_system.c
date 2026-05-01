@@ -727,7 +727,7 @@ void tampilkanDeauthScreen() {
         ssd1306_draw_string_adafruit(0, 0, 30, buf, WHITE, BLACK);
         
         
-        dint animasiProgress = (millis() / 30) % 100; 
+        int animasiProgress = (millis() / 30) % 100; 
 
         drawLoadingBar(14, 45, 100, 8, animasiProgress);
         
