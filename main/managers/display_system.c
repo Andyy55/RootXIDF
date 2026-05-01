@@ -145,7 +145,7 @@ void tampilkanMenuLogo() {
     else                      bigIcon = logo_settings_32;
 
     int iconBounce = getBounce(250, 2); // Loncat 2 pixel
-    oled_draw_bitmap(0, 2, 22 + iconBounce, bigIcon, 32, 32, WHITE);
+    oled_draw_bitmap(0, 48, 24 + iconBounce, bigIcon, 32, 32, WHITE);
 
     // Font library ini ukurannya fix, jadi kita akalin kursornya aja
     ssd1306_draw_string_adafruit(0, 20, 30, "<", WHITE, BLACK);
@@ -205,6 +205,8 @@ void tampilkanMenuUtama() {
 
 void tampilkanTrackScreen() {
     ssd1306_clear(0);
+    
+
     char buf[32];
     
     // --- ANIMASI FLOATING ICON (Icon WiFi naik turun pelan) ---
@@ -218,8 +220,8 @@ void tampilkanTrackScreen() {
     // --- ANIMASI RADAR PULSING ---
     static int r = 0;
     r++; if(r > 20) r = 0;
-    ssd1306_draw_circle(0, 64, 32, r, WHITE);
-    if(r > 10) ssd1306_draw_circle(0, 64, 32, r - 10, WHITE);
+    ssd1306_draw_circle(0, 105, 15, r, WHITE);
+    if(r > 5) ssd1306_draw_circle(0, 105, 15, r - 5, WHITE);
 
     // Data RSSI
     snprintf(buf, sizeof(buf), "%d", targetTerkunci.rssi);
@@ -260,6 +262,8 @@ void tampilkanWifiScanner() {
             ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
             ssd1306_draw_string_adafruit(0, 2, 55, "< BACK", BLACK, WHITE);
         } else {
+          
+
             ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
             snprintf(buf, sizeof(buf), "SCANNER - %d", totalWiFi);
             ssd1306_draw_string_adafruit(0, 2, 1, buf, BLACK, WHITE);
@@ -280,7 +284,7 @@ void tampilkanWifiScanner() {
                     snprintf(buf, sizeof(buf), "%d.", listWiFi[itemIdx].id);
                     ssd1306_draw_string_adafruit(0, 1, yPos + 1, buf, textColor, bgColor);
                     
-                    int maxChar = 8;
+                    int maxChar = 7;
                     int len = strlen(listWiFi[itemIdx].ssid);
                     char textShow[16] = {0};
 
@@ -345,7 +349,8 @@ void tampilkanWifiScanner() {
 
         // --- 2. BLOK PUTIH FOKUS (DI TENGAH) ---
         // Posisinya statis di tengah layar buat nandain menu yang kepilih
-        ssd1306_fill_rectangle(0, 0, 24, 128, 18, WHITE);
+      //  ssd1306_fill_rectangle(0, 0, 24, 128, 16, WHITE);
+        ssd1306_draw_rectangle(0, 0, 28 - 3, 127, 15, WHITE); 
         
         drawSmartSelection(24);
 
@@ -370,16 +375,17 @@ void tampilkanWifiScanner() {
             yPos = 28 + (diff * 18); 
 
             // Biar menu yang jauh gak ngetimpa header/footer, kita filter yang muncul aja
-            if (yPos > 10 && yPos < 50) {
+            if (yPos > 10 && yPos < 52) {
                 if (i == contextCursor) {
                     // --- MENU TERPILIH (GEDE + ICON) ---
-                    oled_draw_bitmap(0, 5, yPos - 2, icon, 10, 10, BLACK); // Icon di blok putih
-                    ssd1306_draw_string_adafruit(0, 22, yPos, (char*)teks, BLACK, WHITE); // Font Size 2 (Kalo lib lu support size di param 3)
+                    oled_draw_bitmap(0, 6, yPos - 4, icon, 10, 10, WHITE); // Icon di blok putih
+                    ssd1306_draw_string_adafruit(0, 22, yPos - 3, (char*)teks, WHITE, BLACK); // Font Size 2 (Kalo lib lu support size di param 3)
                     // Note: Kalo ssd1306_draw_string_adafruit param ke-3 itu size, ganti jadi 2
                 } else {
                     // --- MENU GAK TERPILIH (KECIL) ---
+                    oled_draw_bitmap(0, 4, yPos - 2, icon, 10, 10, WHITE);
                     // Digambar lebih minggir dan font ukuran 1
-                    ssd1306_draw_string_adafruit(0, 10, yPos + 2, (char*)teks, WHITE, BLACK);
+                    ssd1306_draw_string_adafruit(0, 8, yPos + 2, (char*)teks, WHITE, BLACK);
                 }
             }
         }
@@ -440,7 +446,9 @@ void tampilkanStationScanner() {
                     snprintf(buf, sizeof(buf), "%02X:%02X..%02X:%02X", 
                              listStation[itemIdx].mac[0], listStation[itemIdx].mac[1],
                              listStation[itemIdx].mac[4], listStation[itemIdx].mac[5]);
-                    ssd1306_draw_string_adafruit(0, 20, yPos + 1, buf, txtCol, bgCol);
+                   
+                  
+                    ssd1306_draw_string_adafruit(0, 18, yPos + 1, buf, txtCol, bgCol);
 
                     snprintf(buf, sizeof(buf), "%ddBm", listStation[itemIdx].rssi);
                     ssd1306_draw_string_adafruit(0, 90, yPos + 1, buf, txtCol, bgCol);
@@ -458,7 +466,22 @@ void tampilkanStationScanner() {
         snprintf(buf, sizeof(buf), "MAC: %02X:%02X:%02X:%02X:%02X:%02X", 
                  targetSta.mac[0], targetSta.mac[1], targetSta.mac[2],
                  targetSta.mac[3], targetSta.mac[4], targetSta.mac[5]);
-        ssd1306_draw_string_adafruit(0, 5, 15, buf, WHITE, BLACK);
+                 
+        int maxChar = 14;
+                    int len = strlen(buf);
+                    char textShow[16] = {0};
+
+                    if (i == cursorInScanner && len > maxChar) {
+                        int kelebihan = len - maxChar;
+                        int offset = (millis() / 300) % (kelebihan + 4); 
+                        if (offset > kelebihan) offset = kelebihan; 
+                        strncpy(textShow, buf + offset, maxChar);
+                    } else {
+                        if (len > maxChar) strncpy(textShow, buf, maxChar);
+                        else               strcpy(textShow, buf);
+                    }
+        ssd1306_draw_string_adafruit(0, 5, 15, textShow, WHITE, BLACK);
+        
 
         snprintf(buf, sizeof(buf), "RSSI: %d dBm", targetSta.rssi);
         ssd1306_draw_string_adafruit(0, 5, 25, buf, WHITE, BLACK);

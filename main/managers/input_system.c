@@ -47,6 +47,7 @@ void handleJoystick() {
     if (appMode == 2) { handleNavigasiDeauth(btn);  lastPress = input_millis(); return; }
     if (appMode == 4) { handleNavigasiSpam(btn);    lastPress = input_millis(); return; } 
      if (appMode == 5) { handleNavigasiScanSta(btn); lastPress = input_millis(); return; }
+     if (appMode == 6) { handletrackmenu(btn); lastPress = input_millis(); return; }
     
     // Mode 3 (Brightness)
     if (appMode == 3) {
@@ -134,6 +135,9 @@ void handleJoystick() {
 // ==========================================
 // LOGIKA NAVIGASI KHUSUS 
 // ==========================================
+void handletrackmenu(int btn) {
+if (btn == BTN_LEFT) scannerState = 4; 
+}
 void handleNavigasiScanner(int btn) {
     if (scannerState == 0) {
         if (btn == BTN_LEFT) appMode = 0; 
@@ -162,6 +166,7 @@ void handleNavigasiScanner(int btn) {
                 targetLockedIdx = scrollPosScanner + cursorInScanner; 
                 targetTerkunci = listWiFi[targetLockedIdx];
                 adaTarget = true; 
+                trigger track = true;
                 scannerState = 4;   
                 contextCursor = 0;  
             }
@@ -180,7 +185,7 @@ void handleNavigasiScanner(int btn) {
             contextCursor = (contextCursor > 0) ? contextCursor - 1 : 2; // Batas atas ke 2
         } 
         else if (btn == BTN_DOWN) {
-            contextCursor = (contextCursor < 2) ? contextCursor + 1 : 0; // Batas bawah ke 2
+            contextCursor = (contextCursor < 3) ? contextCursor + 1 : 0; // Batas bawah ke 2
         }
         
         else if (btn == BTN_OK) {
