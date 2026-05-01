@@ -40,7 +40,7 @@ bool triggerTrack = false;
 
 // Di dalam while(1)
 
-
+int deauthProgress;
 bool adaTargetSta = false;
 bool isDeauthSta = false;
 bool inSubMenu = false;
