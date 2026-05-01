@@ -18,6 +18,7 @@ extern void tampilkanTeksSplash(void);
 extern void tampilkanMenuLogo(void);
 extern void tampilkanMenuUtama(void);
 extern void tampilkanWifiScanner(void);
+extern void tampilkanStationScanner(void);
 extern void tampilkanDeauthScreen(void);
 extern void tampilkanBrightness(void);
 extern void tampilkanSpamScreen(const char* judul, const char* subTeks);
@@ -33,11 +34,20 @@ int ieee80211_raw_frame_sanity_check(int32_t arg, int32_t arg2, int32_t arg3) {
 
 
 // --- DEFINISI VARIABEL GLOBAL ---
+// Di bagian definisi variabel atas
+bool triggerTrack = false;
+
+// Di dalam while(1)
+
+
+bool adaTargetSta = false;
+bool isDeauthSta = false;
 bool inSubMenu = false;
 int currentMenu = 0;
 int currentSub = 0;
 int topMenu = 0;
 WiFiData listWiFi[30];
+StationInfo listStation[30];
 int brightnessValue = 150;
 int spamState = 0; 
 bool isSpamming = false;
@@ -45,14 +55,20 @@ int aktifModeSpam = 0;
 bool spamUdahSetup = false;
 bool deauthUdahSetup = false;
 int scannerState = 0; 
+int scannerStateSta = 0; 
 uint32_t popUpTimer = 0; 
 bool triggerScan = false; 
+bool triggerScanSta = false; 
 bool scanDone = false;    
+bool scanStaDone = false;    
 int totalWiFi = 0;
+int totalStation = 0;
 int cursorInScanner = 0; 
+int cursorInScanSta = 0; 
 int scrollPosScanner = 0;
 int targetLockedIdx = -1;
 int contextCursor = 0;
+StationInfo targetSta;
 WiFiData targetTerkunci; 
 bool adaTarget = false;  
 int deauthState = 0;
@@ -94,7 +110,13 @@ if (ssd1306_init(0, 9, 8)) {
     ESP_LOGE("RootX", "OLED Gagal Inisialisasi!");
 }
 
-
+extern bool init_sdcard(); // Kasih tau compiler fungsinya ada di file lain
+    if (init_sdcard()) {
+        ESP_LOGI("RootX", "Mantap, SD Card Jalan!");
+    } else {
+        // Kalau gagal, minimal lu tau dari log serial
+        ESP_LOGE("RootX", "Yah, SD Card Gagal... Cek kabel GPIO 3 lu!");
+    }
     
     // (Biar layar muter 180 derajat, nanti cari fungsi flip di library barunya)
 
@@ -134,7 +156,11 @@ if (ssd1306_init(0, 9, 8)) {
         else if (appMode == 4) {
             if (aktifModeSpam == 1) tampilkanSpamScreen("BEACON SPAM", "Start Spam?");
             else if (aktifModeSpam == 2) tampilkanSpamScreen("RICKROLL", "Start Spam?");
-        }
+        } else if (appMode == 5) { 
+            tampilkanStationScanner();
+        } else if (appMode == 6) { // Kita kasih mode 6 buat Track
+    tampilkanTrackScreen();
+}
 
         // Delay wajib FreeRTOS biar Core 1 gak crash (Watchdog Timeout)
         vTaskDelay(pdMS_TO_TICKS(20)); 
