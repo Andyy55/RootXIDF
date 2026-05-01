@@ -21,7 +21,7 @@ extern void tampilkanWifiScanner(void);
 extern void tampilkanTrackScreen(void);
 extern void tampilkanStationScanner(void); 
 extern void tampilkanDeauthScreen(void);
-extern void tampilkandeauthsta(void)
+extern void tampilkandeauthsta(void);
 extern void tampilkanBrightness(void);
 extern void tampilkanInputPassword(void);
 extern void tampilkanConnectedWiFi(void);
