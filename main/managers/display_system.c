@@ -12,22 +12,40 @@
 
 #define WHITE 1
 #define BLACK 0
-
+#define MAX_STARS 15
+Star stars[MAX_STARS];
+bool starInit = false;
 
 // --- DATA UNTUK ANIMASI BINTANG ---
 typedef struct {
     float x, y, z;
 } Star;
 
-#define MAX_STARS 15
-Star stars[MAX_STARS];
-bool starInit = false;
+Star stars[15];
+
+void initStars() {
+    for (int i = 0; i < 15; i++) {
+        stars[i].x = (rand() % 128) - 64;
+        stars[i].y = (rand() % 64) - 32;
+        stars[i].z = (rand() % 64) + 1;
+    }
+    starInit = true;
+}
+
 
 // Inisialisasi bintang pertama kali
 extern void oled_draw_bitmap(uint8_t id, int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, ssd1306_color_t color);
 
 uint32_t millis() {
     return (uint32_t)(esp_timer_get_time() / 1000);
+}
+
+static float visualY = 24.0; // Variabel buat simpen posisi kursor sementara
+
+void drawSmartSelection(int targetY) {
+    // 0.3 itu kecepatan luncur, makin kecil makin lambat/smooth
+    visualY += (targetY - visualY) * 0.3; 
+    ssd1306_fill_rectangle(0, 0, (int)visualY, 128, 18, WHITE);
 }
 
 // Fungsi animasi wave
@@ -128,7 +146,7 @@ void tampilkanMenuLogo() {
     else                      bigIcon = logo_settings_32;
 
     int iconBounce = getBounce(250, 2); // Loncat 2 pixel
-    oled_draw_bitmap(0, 2, 22, + iconBounce, bigIcon, 32, 32, WHITE);
+    oled_draw_bitmap(0, 2, 22 + iconBounce, bigIcon, 32, 32, WHITE);
 
     // Font library ini ukurannya fix, jadi kita akalin kursornya aja
     ssd1306_draw_string_adafruit(0, 20, 30, "<", WHITE, BLACK);
@@ -434,7 +452,7 @@ void tampilkanStationScanner() {
             ssd1306_draw_string_adafruit(0, 53, 55, "[OK] ACTION", BLACK, WHITE);
         }
     }
-    else if (scannerStateSta == 3) { 
+    else if (scannerStateSta == 3) {
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 22, 1, "TARGET DETAILS", BLACK, WHITE);
 
@@ -452,7 +470,7 @@ void tampilkanStationScanner() {
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 2, 55, "< BACK", BLACK, WHITE);
     } 
-    else if (scannerStateSta == 4) { 
+    else if (scannerStateSta == 4) {
         drawStarfield();
         // --- 1. HEADER (Tetap) ---
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
@@ -465,7 +483,7 @@ void tampilkanStationScanner() {
         drawSmartSelection(24);
 
         // Kita looping semua menu (ada 4: Deauth, Scan Client, Track, Details)
-        for(int i = 0; i < 4; i++) {
+        for(int i = 0; i < 2; i++) {
             const char* teks;
             const unsigned char* icon;
             
@@ -509,20 +527,6 @@ void tampilkanStationScanner() {
 
 
 
-void drawLoadingBar(int x, int y, int w, int h, int progress) {
-    ssd1306_draw_rectangle(0, x, y, w, h, WHITE);
-    int fillW = (w * progress) / 100;
-    ssd1306_fill_rectangle(0, x, y, fillW, h, WHITE);
-    
-    // Animasi garis miring jalan di dalem bar (Efek Glossy)
-    int offset = (millis() / 50) % 20;
-    for(int i = 0; i < fillW; i += 15) {
-        int lineX = x + i + offset;
-        if(lineX < x + fillW) {
-            ssd1306_draw_line(0, lineX, y, lineX - 5, y + h, BLACK);
-        }
-    }
-}
 
 
 void tampilkanDeauthScreen() {
