@@ -21,7 +21,11 @@ extern void tampilkanWifiScanner(void);
 extern void tampilkanTrackScreen(void);
 extern void tampilkanStationScanner(void); 
 extern void tampilkanDeauthScreen(void);
+extern void tampilkandeauthsta(void)
 extern void tampilkanBrightness(void);
+extern void tampilkanInputPassword(void);
+extern void tampilkanConnectedWiFi(void);
+extern void tampilkanStatusKoneksi(void);
 extern void tampilkanSpamScreen(const char* judul, const char* subTeks);
 extern void loopWiFi(void *pvParameters);
 
@@ -40,7 +44,7 @@ bool triggerTrack = false;
 
 // Di dalam while(1)
 
-int deauthProgress;
+int deauthProgress = 0;
 bool adaTargetSta = false;
 bool isDeauthSta = false;
 bool inSubMenu = false;
@@ -161,7 +165,16 @@ extern bool init_sdcard(); // Kasih tau compiler fungsinya ada di file lain
             tampilkanStationScanner();
         } else if (appMode == 6) { // Kita kasih mode 6 buat Track
     tampilkanTrackScreen();
+} else if (appMode == 7) {
+tampilkandeauthsta();
+} else if (appMode == 8) {
+tampilkanInputPassword();
+} else if (appMode == 9) {
+tampilkanConnectedWiFi();
+}else if (appMode == 10) {
+    tampilkanStatusKoneksi();
 }
+
 
         // Delay wajib FreeRTOS biar Core 1 gak crash (Watchdog Timeout)
         vTaskDelay(pdMS_TO_TICKS(20)); 
