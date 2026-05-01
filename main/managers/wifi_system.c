@@ -55,6 +55,7 @@ void station_sniffer_cb(void *buf, wifi_promiscuous_pkt_type_t type) {
     
     if (memcmp(frame + 10, targetApMac, 6) == 0) {
         targetTerkunci.rssi = pkt->rx_ctrl.rssi;
+        }
 
     uint8_t *addr1 = frame + 4;  
     uint8_t *addr2 = frame + 10; 
