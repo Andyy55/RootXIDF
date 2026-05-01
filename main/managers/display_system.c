@@ -144,12 +144,12 @@ void tampilkanMenuLogo() {
     else if(currentMenu == 2) bigIcon = logo_ir_32;
     else                      bigIcon = logo_settings_32;
 
-    int iconBounce = getBounce(250, 2); // Loncat 2 pixel
-    oled_draw_bitmap(0, 48, 24 + iconBounce, bigIcon, 32, 32, WHITE);
+    int iconBounce = getBounce(300, 2); // Loncat 2 pixel
+    oled_draw_bitmap(0, 46, 20 + iconBounce, bigIcon, 32, 32, WHITE);
 
     // Font library ini ukurannya fix, jadi kita akalin kursornya aja
     ssd1306_draw_string_adafruit(0, 20, 30, "<", WHITE, BLACK);
-    ssd1306_draw_string_adafruit(0, 95, 30, ">", WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 103, 30, ">", WHITE, BLACK);
     ssd1306_draw_string_adafruit(0, 40, 56, ">SELECT<", WHITE, BLACK); 
     
     ssd1306_refresh(0, true);
@@ -189,7 +189,7 @@ void tampilkanMenuUtama() {
         else                      iconSmall = iconListSet[itemIndex]; 
 
         
-        int iconBounce = getBounce(250, 2); // Loncat 2 pixel
+        int iconBounce = getBounce(300, 1); // Loncat 2 pixel
         oled_draw_bitmap(0, 2, (yPos - 1) + iconBounce, iconSmall, 10, 10, textColor);
         
         const char* textToPrint = "";
@@ -202,6 +202,79 @@ void tampilkanMenuUtama() {
     }
     ssd1306_refresh(0, true);
 }
+
+void tampilkanInputPassword() {
+    ssd1306_clear(0);
+    ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
+    ssd1306_draw_string_adafruit(0, 5, 1, "ENTER PASSWORD", BLACK, WHITE);
+
+    // Tampilan SSID Target di bawah Header
+    char targetBuf[32];
+    snprintf(targetBuf, sizeof(targetBuf), "Target: %s", targetTerkunci.ssid);
+    ssd1306_draw_string_adafruit(0, 5, 15, targetBuf, WHITE, BLACK);
+
+    // --- KOTAK INPUT ---
+    ssd1306_draw_rectangle(0, 4, 30, 120, 15, WHITE);
+    
+    // Tampilkan password yang udah diketik
+    ssd1306_draw_string_adafruit(0, 10, 34, inputPassword, WHITE, BLACK);
+
+    // --- KURSOR KEDAP-KEDIP ---
+    if ((millis() / 300) % 2 == 0) {
+        int cursorX = 10 + (cursorPass * 6);
+        ssd1306_draw_hline(0, cursorX, 43, 6, WHITE);
+    }
+
+    ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
+    ssd1306_draw_string_adafruit(0, 2, 55, "< DEL", BLACK, WHITE);
+    ssd1306_draw_string_adafruit(0, 45, 55, "[OK] CONNECT", BLACK, WHITE);
+    
+    ssd1306_refresh(0, true);
+}
+
+void tampilkanStatusKoneksi() {
+    ssd1306_clear(0);
+    drawWave(); // Kasih animasi wave biar keren
+
+    // Header tetep blok putih
+    ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
+    ssd1306_draw_string_adafruit(0, 30, 1, "WIFI STATUS", BLACK, WHITE);
+
+    if (statusKoneksi == 0) {
+        // TAMPILAN LAGI PROSES
+        int bounce = getBounce(200, 3);
+        oled_draw_bitmap(0, 54, 20 + bounce, iconSmall_wifi, 10, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 30, 40, "CONNECTING...", WHITE, BLACK);
+        drawLoadingBar(24, 52, 80, 6, (millis() / 20) % 100);
+    } 
+    else if (statusKoneksi == 1) {
+        // TAMPILAN BERHASIL
+        ssd1306_draw_string_adafruit(0, 35, 25, "CONNECTED!", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 20, 35, targetTerkunci.ssid, WHITE, BLACK);
+        // Icon Ceklis (pake icon info aja kalo gada)
+        oled_draw_bitmap(0, 59, 45, iconSmall_info, 10, 10, WHITE);
+    } 
+    else if (statusKoneksi == 2) {
+        // TAMPILAN GAGAL
+        ssd1306_draw_string_adafruit(0, 40, 25, "FAILED!", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 15, 35, "Wrong Password?", WHITE, BLACK);
+        oled_draw_bitmap(0, 59, 45, iconSmall_skull, 10, 10, WHITE);
+    } else if (statusKoneksi == 3) {
+        // --- TAMPILAN DISCONNECTING ---
+        ssd1306_draw_string_adafruit(0, 25, 25, "DISCONNECTING...", WHITE, BLACK);
+        drawLoadingBar(24, 40, 80, 6, (millis() / 15) % 100);
+    }
+    else if (statusKoneksi == 4) {
+        // --- TAMPILAN DISCONNECTED (BERHASIL CABUT) ---
+        ssd1306_draw_string_adafruit(0, 22, 30, "DISCONNECTED!", WHITE, BLACK);
+        oled_draw_bitmap(0, 59, 45, iconSmall_saved, 10, 10, WHITE); 
+        // Pake icon saved atau centang biar keliatan sukses cabut
+    }
+
+    ssd1306_refresh(0, true);
+}
+
+
 
 void tampilkanTrackScreen() {
     ssd1306_clear(0);
@@ -284,7 +357,7 @@ void tampilkanWifiScanner() {
                     snprintf(buf, sizeof(buf), "%d.", listWiFi[itemIdx].id);
                     ssd1306_draw_string_adafruit(0, 1, yPos + 1, buf, textColor, bgColor);
                     
-                    int maxChar = 7;
+                    int maxChar = 8;
                     int len = strlen(listWiFi[itemIdx].ssid);
                     char textShow[16] = {0};
 
@@ -297,7 +370,7 @@ void tampilkanWifiScanner() {
                         if (len > maxChar) strncpy(textShow, listWiFi[itemIdx].ssid, maxChar);
                         else               strcpy(textShow, listWiFi[itemIdx].ssid);
                     }
-                    ssd1306_draw_string_adafruit(0, 20, yPos + 1, textShow, textColor, bgColor);
+                    ssd1306_draw_string_adafruit(0, 18, yPos + 1, textShow, textColor, bgColor);
 
                     snprintf(buf, sizeof(buf), "C:%d", listWiFi[itemIdx].channel);
                     ssd1306_draw_string_adafruit(0, 65, yPos + 1, buf, textColor, bgColor);
@@ -341,63 +414,98 @@ void tampilkanWifiScanner() {
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 2, 55, "[<] BACK", BLACK, WHITE);
     } 
-            else if (scannerState == 4) {
-            drawStarfield();
-        // --- 1. HEADER (Tetap) ---
+                else if (scannerState == 4) { // Atau scannerStateSta == 4, sesuaikan aja
+        // --- 1. HEADER ---
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-        ssd1306_draw_string_adafruit(0, 43, 1, "ACTIONS", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 42, 1, "ACTIONS", BLACK, WHITE);
 
-        // --- 2. BLOK PUTIH FOKUS (DI TENGAH) ---
-        // Posisinya statis di tengah layar buat nandain menu yang kepilih
-      //  ssd1306_fill_rectangle(0, 0, 24, 128, 16, WHITE);
-        ssd1306_draw_rectangle(0, 0, 28 - 3, 127, 15, WHITE); 
-        
-        drawSmartSelection(24);
+        // --- 2. BLOK PUTIH STATIS DI TENGAH ---
+        // Y mulai dari 24, tinggi 16 piksel (Bener-bener pas di center OLED 128x64)
+        ssd1306_fill_rectangle(0, 0, 24, 128, 16, WHITE);
 
-        // Kita looping semua menu (ada 4: Deauth, Scan Client, Track, Details)
-        for(int i = 0; i < 4; i++) {
+        // --- 3. LOGIKA ROLLING MENU ---
+        for(int i = 0; i < 5; i++) {
             const char* teks;
             const unsigned char* icon;
             
-            // Setting Teks & Icon
-            if(i == 0)      { teks = "DEAUTH";  icon = iconSmall_skull; }
-            else if(i == 1) { teks = "CLIENTS"; icon = iconSmall_sniff; }
-            else if(i == 2) { teks = "TRACK";   icon = iconSmall_wifi;  } // Pakai icon wifi/signal
+            // Set Teks dan Icon
+            if(i == 0)      { teks = "DEAUTH "; icon = iconSmall_skull; }
+            else if(i == 1) { teks = "CONNECT"; icon = iconSmall_conn; }
+            else if(i == 2) { teks = "CLIENTS"; icon = iconSmall_sniff; }
+            else if(i == 3) { teks = "TRACK  "; icon = iconSmall_wifi;  } 
             else            { teks = "DETAILS"; icon = iconSmall_info;  }
 
-            // --- 3. LOGIKA POSISI DINAMIS ---
-            // Jarak antar menu (kalo lagi fokus beda sama lagi gak fokus)
-            int yPos;
-            int diff = i - contextCursor; // Jarak index menu dari kursor sekarang
+            // Hitung jarak index ini dari kursor yang lagi aktif
+            int diff = i - contextCursor; 
+            
+            // Jarak antar baris 15 piksel. Posisi tengah (diff=0) ada di Y=27
+            int yPos = 27 + (diff * 15); 
 
-            // Rumus posisi: Tengah ada di Y=28. 
-            // Menu di atasnya dikasih jarak -15, menu di bawahnya +18
-            yPos = 28 + (diff * 18); 
-
-            // Biar menu yang jauh gak ngetimpa header/footer, kita filter yang muncul aja
-            if (yPos > 10 && yPos < 52) {
-                if (i == contextCursor) {
-                    // --- MENU TERPILIH (GEDE + ICON) ---
-                    oled_draw_bitmap(0, 6, yPos - 4, icon, 10, 10, WHITE); // Icon di blok putih
-                    ssd1306_draw_string_adafruit(0, 22, yPos - 3, (char*)teks, WHITE, BLACK); // Font Size 2 (Kalo lib lu support size di param 3)
-                    // Note: Kalo ssd1306_draw_string_adafruit param ke-3 itu size, ganti jadi 2
-                } else {
-                    // --- MENU GAK TERPILIH (KECIL) ---
-                    oled_draw_bitmap(0, 4, yPos - 2, icon, 10, 10, WHITE);
-                    // Digambar lebih minggir dan font ukuran 1
-                    ssd1306_draw_string_adafruit(0, 8, yPos + 2, (char*)teks, WHITE, BLACK);
+            // Cuma gambar menu yang posisinya ada di area pandang (antara header & footer)
+            if (yPos > 10 && yPos < 45) {
+                
+                if (diff == 0) { 
+                    // --- MENU TERPILIH (DI TENGAH BLOK PUTIH) ---
+                    // Warna dibalik (Hitam di atas Putih)
+                    oled_draw_bitmap(0, 26, yPos - 1, icon, 10, 10, BLACK); 
+                    ssd1306_draw_string_adafruit(0, 42, yPos, (char*)teks, BLACK, WHITE);
+                    
+                    // Tambahan efek panah biar kelihatan lebih "Gede/Lebar"
+                    ssd1306_draw_string_adafruit(0, 10, yPos, ">", BLACK, WHITE);
+                    ssd1306_draw_string_adafruit(0, 110, yPos, "<", BLACK, WHITE);
+                } 
+                else { 
+                    // --- MENU GAK TERPILIH (DI ATAS / DI BAWAH) ---
+                    // Warna normal (Putih di atas Hitam)
+                    // Posisinya digeser X-nya (+4) biar seakan-akan mundur/mengecil
+                    oled_draw_bitmap(0, 30, yPos, icon, 10, 10, WHITE);
+                    ssd1306_draw_string_adafruit(0, 46, yPos + 1, (char*)teks, WHITE, BLACK);
                 }
             }
         }
 
-        // --- 4. FOOTER (Tetap) ---
+        // --- 4. FOOTER ---
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 2, 55, "< BACK", BLACK, WHITE);
-        
-        ssd1306_draw_string_adafruit(0, 90, 55, "OK: GO", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 85, 55, "[OK] GO", BLACK, WHITE);
     }
 
 
+
+    ssd1306_refresh(0, true);
+}
+
+
+void tampilkanConnectedWiFi() {
+    ssd1306_clear(0);
+    
+    // HEADER BLOK
+    ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
+    ssd1306_draw_string_adafruit(0, 22, 1, "CONNECTED INFO", BLACK, WHITE);
+
+    if (!isWiFiConnected) {
+        ssd1306_draw_string_adafruit(0, 15, 30, "BELUM KONEK WIFI", WHITE, BLACK);
+        
+        // FOOTER BACK
+        ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 5, 55, "< BACK", BLACK, WHITE);
+    } else {
+        // Tampilkan Detail
+        char buf[64];
+        snprintf(buf, sizeof(buf), "SSID: %s", connSSID);
+        ssd1306_draw_string_adafruit(0, 5, 15, buf, WHITE, BLACK);
+        
+        snprintf(buf, sizeof(buf), "CH  : %d", connCH);
+        ssd1306_draw_string_adafruit(0, 5, 25, buf, WHITE, BLACK);
+        
+        snprintf(buf, sizeof(buf), "RSSI: %d dBm", connRSSI);
+        ssd1306_draw_string_adafruit(0, 5, 35, buf, WHITE, BLACK);
+
+        // FOOTER BACK & DISC
+        ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 5, 55, "< BACK", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 95, 55, "DISC >", BLACK, WHITE);
+    }
     ssd1306_refresh(0, true);
 }
 
@@ -480,56 +588,63 @@ void tampilkanStationScanner() {
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 2, 55, "< BACK", BLACK, WHITE);
     } 
-    else if (scannerStateSta == 4) {
-        drawStarfield();
-        // --- 1. HEADER (Tetap) ---
+    
+        else if (scannerStateSta == 4) { // Atau scannerStateSta == 4, sesuaikan aja
+        // --- 1. HEADER ---
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-        ssd1306_draw_string_adafruit(0, 43, 1, "ACTIONS", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 42, 1, "ACTIONS", BLACK, WHITE);
 
-        // --- 2. BLOK PUTIH FOKUS (DI TENGAH) ---
-        // Posisinya statis di tengah layar buat nandain menu yang kepilih
-        ssd1306_fill_rectangle(0, 0, 24, 128, 18, WHITE);
-        
-        drawSmartSelection(24);
+        // --- 2. BLOK PUTIH STATIS DI TENGAH ---
+        // Y mulai dari 24, tinggi 16 piksel (Bener-bener pas di center OLED 128x64)
+        ssd1306_fill_rectangle(0, 0, 24, 128, 16, WHITE);
 
-        // Kita looping semua menu (ada 4: Deauth, Scan Client, Track, Details)
-        for(int i = 0; i < 2; i++) {
+        // --- 3. LOGIKA ROLLING MENU ---
+        for(int i = 0; i < 4; i++) {
             const char* teks;
             const unsigned char* icon;
             
-            // Setting Teks & Icon
-            if(i == 0)      { teks = "KICK CLIENT";  icon = iconSmall_skull; }
+            // Set Teks dan Icon
+              if(i == 0)      { teks = "KICK CLIENT";  icon = iconSmall_skull; }
             else            { teks = "DETAILS"; icon = iconSmall_info;  }
 
-            // --- 3. LOGIKA POSISI DINAMIS ---
-            // Jarak antar menu (kalo lagi fokus beda sama lagi gak fokus)
-            int yPos;
-            int diff = i - contextCursor; // Jarak index menu dari kursor sekarang
+            // Hitung jarak index ini dari kursor yang lagi aktif
+            int diff = i - contextCursor; 
+            
+            // Jarak antar baris 15 piksel. Posisi tengah (diff=0) ada di Y=27
+            int yPos = 27 + (diff * 15); 
 
-            // Rumus posisi: Tengah ada di Y=28. 
-            // Menu di atasnya dikasih jarak -15, menu di bawahnya +18
-            yPos = 28 + (diff * 18); 
-
-            // Biar menu yang jauh gak ngetimpa header/footer, kita filter yang muncul aja
-            if (yPos > 10 && yPos < 50) {
-                if (i == contextCursor) {
-                    // --- MENU TERPILIH (GEDE + ICON) ---
-                    oled_draw_bitmap(0, 5, yPos - 2, icon, 10, 10, BLACK); // Icon di blok putih
-                    ssd1306_draw_string_adafruit(0, 22, yPos, (char*)teks, BLACK, WHITE); // Font Size 2 (Kalo lib lu support size di param 3)
-                    // Note: Kalo ssd1306_draw_string_adafruit param ke-3 itu size, ganti jadi 2
-                } else {
-                    // --- MENU GAK TERPILIH (KECIL) ---
-                    // Digambar lebih minggir dan font ukuran 1
-                    ssd1306_draw_string_adafruit(0, 10, yPos + 2, (char*)teks, WHITE, BLACK);
+            // Cuma gambar menu yang posisinya ada di area pandang (antara header & footer)
+            if (yPos > 10 && yPos < 45) {
+                
+                if (diff == 0) { 
+                    // --- MENU TERPILIH (DI TENGAH BLOK PUTIH) ---
+                    // Warna dibalik (Hitam di atas Putih)
+                    oled_draw_bitmap(0, 26, yPos - 1, icon, 10, 10, BLACK); 
+                    ssd1306_draw_string_adafruit(0, 42, yPos, (char*)teks, BLACK, WHITE);
+                    
+                    // Tambahan efek panah biar kelihatan lebih "Gede/Lebar"
+                    ssd1306_draw_string_adafruit(0, 10, yPos, ">", BLACK, WHITE);
+                    ssd1306_draw_string_adafruit(0, 110, yPos, "<", BLACK, WHITE);
+                } 
+                else { 
+                    // --- MENU GAK TERPILIH (DI ATAS / DI BAWAH) ---
+                    // Warna normal (Putih di atas Hitam)
+                    // Posisinya digeser X-nya (+4) biar seakan-akan mundur/mengecil
+                    oled_draw_bitmap(0, 30, yPos, icon, 10, 10, WHITE);
+                    ssd1306_draw_string_adafruit(0, 46, yPos + 1, (char*)teks, WHITE, BLACK);
                 }
             }
         }
 
-        // --- 4. FOOTER (Tetap) ---
+        // --- 4. FOOTER ---
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 2, 55, "< BACK", BLACK, WHITE);
-        ssd1306_draw_string_adafruit(0, 90, 55, "OK: GO", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 85, 55, "[OK] GO", BLACK, WHITE);
     }
+    
+   
+        // --- 4. FOOTER (Tetap) ---
+
     ssd1306_refresh(0, true);
 }
 
@@ -537,7 +652,29 @@ void tampilkanStationScanner() {
 
 
 
+void tampilkandeauthsta() {
+    ssd1306_clear(0);
+    char buf[64];
+    
+        ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 1, "ATTACKING STATION...", BLACK, WHITE);
+        
+        snprintf(buf, sizeof(buf), "Target:%02X:%02X:%02X:%02X:%02X:%02X", 
+                 targetSta.mac[0], targetSta.mac[1], targetSta.mac[2],
+                 targetSta.mac[3], targetSta.mac[4], targetSta.mac[5]);
 
+        ssd1306_draw_string_adafruit(0, 0, 20, buf, WHITE, BLACK);
+        snprintf(buf, sizeof(buf), "Ch: %d", targetTerkunci.channel);
+        ssd1306_draw_string_adafruit(0, 0, 30, buf, WHITE, BLACK);
+        
+        
+        drawLoadingBar(14, 45, 100, 8, deauthProgress);
+        
+        ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 55, "< STOP ATTACK", BLACK, WHITE);
+    
+    ssd1306_refresh(0, true);
+}
 
 void tampilkanDeauthScreen() {
     ssd1306_clear(0);

@@ -27,7 +27,7 @@ void handleNavigasiScanner(int btn);
 void handleNavigasiDeauth(int btn);
 void handleNavigasiSpam(int btn);
 void handleNavigasiScanSta(int btn);
-void handletrackmenu(int btn);
+void handleInputPassword(int btn);
 
 void handleJoystick() {
     static uint32_t lastPress = 0;
@@ -48,8 +48,31 @@ void handleJoystick() {
     if (appMode == 2) { handleNavigasiDeauth(btn);  lastPress = input_millis(); return; }
     if (appMode == 4) { handleNavigasiSpam(btn);    lastPress = input_millis(); return; } 
      if (appMode == 5) { handleNavigasiScanSta(btn); lastPress = input_millis(); return; }
-     if (appMode == 6) { handletrackmenu(btn); lastPress = input_millis(); return; }
     
+     
+    if (appMode == 9) { // Misal appMode 11 itu Connected WiFi
+    if (btn == BTN_LEFT) appMode = 0; // Back ke menu utama
+    if (btn == BTN_RIGHT && isWiFiConnected) {
+        triggerDisconnect = true; // Putusin WiFi
+    }
+    lastPress = input_millis();
+        return;
+}
+     if (appMode == 6) {
+if (btn == BTN_LEFT) { scannerState = 4;  appMode = 1; triggerTrack = false; }
+lastPress = input_millis();
+        return;
+}
+     if (appMode == 7) {
+        if (btn == BTN_LEFT) { 
+            esp_wifi_stop(); 
+            isDeauthSta = false;
+            deauthStateSta = 0;
+            appMode = 2; 
+    }
+    lastPress = input_millis();
+        return;
+}
     // Mode 3 (Brightness)
     if (appMode == 3) {
         if (btn == BTN_UP) {
@@ -136,8 +159,40 @@ void handleJoystick() {
 // ==========================================
 // LOGIKA NAVIGASI KHUSUS 
 // ==========================================
-void handletrackmenu(int btn) {
-if (btn == BTN_LEFT) scannerState = 4; 
+
+
+
+
+
+void handleInputPassword(int btn) {
+    char currentCh = inputPassword[cursorPass];
+
+    if (btn == BTN_UP) {
+        // Naik ke karakter selanjutnya (A->B, dst)
+        if (currentCh == 0) currentCh = 33; // Mulai dari '!'
+        else if (currentCh < 126) currentCh++;
+        inputPassword[cursorPass] = currentCh;
+    } 
+    else if (btn == BTN_DOWN) {
+        // Turun karakter (B->A)
+        if (currentCh > 33) currentCh--;
+        inputPassword[cursorPass] = currentCh;
+    }
+    else if (btn == BTN_RIGHT) {
+        // Geser ke karakter berikutnya
+        if (cursorPass < 63) cursorPass++;
+    }
+    else if (btn == BTN_LEFT) {
+        // Hapus karakter (Backspace)
+        if (cursorPass > 0) {
+            inputPassword[cursorPass] = '\0';
+            cursorPass--;
+        }
+    }
+    else if (btn == BTN_OK) {
+        // GAS KONEK!
+        triggerConnect = true;
+    }
 }
 
 void handleNavigasiScanner(int btn) {
@@ -168,7 +223,7 @@ void handleNavigasiScanner(int btn) {
                 targetLockedIdx = scrollPosScanner + cursorInScanner; 
                 targetTerkunci = listWiFi[targetLockedIdx];
                 adaTarget = true; 
-                triggerTrack = true;
+                triggerTrackWifi = true;
                 scannerState = 4;   
                 contextCursor = 0;  
             }
@@ -192,17 +247,28 @@ void handleNavigasiScanner(int btn) {
         
         else if (btn == BTN_OK) {
         if (contextCursor == 0) { appMode = 2; deauthState = 0; } 
-        else if (contextCursor == 1) { appMode = 5; scannerStateSta = 0; contextCursor = 0; }
-        else if (contextCursor == 2) { // TRACK
+        else if (contectCursor == 1) {
+        if (targetTerkunci.is_open) { 
+            triggerConnect = true; 
+            inputPassword[0] = '\0'; // Kosongin pass
+        } else {
+            appMode = 8; // Pindah ke screen input password (roller)
+        }
+        }
+        else if (contextCursor == 2) { appMode = 5; scannerStateSta = 0; contextCursor = 0; }
+        else if (contextCursor == 3) { // TRACK
             appMode = 6; 
             triggerTrack = true; // Nyalain update RSSI
         }
-        else if (contextCursor == 3) { scannerState = 3; }
+        else if (contextCursor == 4) { scannerState = 3; }
     }
         else if (btn == BTN_LEFT) scannerState = 2; 
     }
 
 }
+
+
+
 
 void handleNavigasiScanSta(int btn) {
     if (scannerStateSta == 0) {
@@ -215,7 +281,7 @@ void handleNavigasiScanSta(int btn) {
         }
     } 
     else if (scannerStateSta == 2) {
-        if (btn == BTN_LEFT) scannerStateSta = 0; // Mau scan lagi
+        if (btn == BTN_LEFT) appMode = 1; // Mau scan lagi
         else if (btn == BTN_UP) {
             if (cursorInScanSta > 0) cursorInScanSta--; 
             else if (scrollPosScanner > 0) scrollPosScanner--;
@@ -245,13 +311,13 @@ void handleNavigasiScanSta(int btn) {
                 // MULAI ATTACK KE HP
                 isDeauthSta = true; 
                 scannerStateSta = 0;
-                appMode = 2; // Pindah layar ke animasi Deauth
+                appMode = 7; // Pindah layar ke animasi Deauth
             } 
             else if (contextCursor == 1) {
                 scannerStateSta = 3; // Lihat Detail
             }
         }
-        else if (btn == BTN_LEFT) scannerStateSta = 2; 
+        else if (btn == BTN_LEFT) { scannerStateSta = 2;}
     }
 }
 
@@ -269,7 +335,7 @@ void handleNavigasiDeauth(int btn) {
             esp_wifi_stop(); 
             isDeauthing = false;
             deauthState = 0;
-            appMode = 0; 
+            appMode = 1; 
         }
     }
 }

