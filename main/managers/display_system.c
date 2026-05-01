@@ -7,11 +7,12 @@
 #include "photo_data.h"
 #include "ssd1306.h"
 #include "i2c.h"
+#include <math.h>
+
 
 #define WHITE 1
 #define BLACK 0
 
-#include <math.h>
 
 // --- DATA UNTUK ANIMASI BINTANG ---
 typedef struct {
@@ -23,36 +24,40 @@ Star stars[MAX_STARS];
 bool starInit = false;
 
 // Inisialisasi bintang pertama kali
-void initStars() {
-    for (int i = 0; i < MAX_STARS; i++) {
-        stars[i].x = (rand() % 128) - 64;
-        stars[i].y = (rand() % 64) - 32;
-        stars[i].z = (rand() % 64) + 1;
-    }
-    starInit = true;
+extern void oled_draw_bitmap(uint8_t id, int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, ssd1306_color_t color);
+
+uint32_t millis() {
+    return (uint32_t)(esp_timer_get_time() / 1000);
 }
 
-static float visualY = 24; 
-
-void drawSmartSelection(int targetY) {
-    // Rumus rahasia biar gerakannya smooth (Ease Out)
-    // visualY bakal ngejar targetY pelan-pelan
-    visualY += (targetY - visualY) * 0.3; 
-    
-    // Gambar blok putih berdasarkan visualY yang lagi gerak
-    ssd1306_fill_rectangle(0, 0, (int)visualY, 128, 18, WHITE);
-}
-
+// Fungsi animasi wave
 void drawWave() {
     for (int x = 0; x < 128; x++) {
-        // Rumus gelombang sinus
-        int y = 60 + (int)(sin((x + millis() / 10) * 0.1) * 3);
+        int y = 60 + (int)(sin((x + (int)millis() / 10) * 0.1) * 3);
         ssd1306_draw_pixel(0, x, y, WHITE);
     }
 }
 
+// Fungsi bounce buat icon
 int getBounce(int speed, int range) {
     return (int)(sin(millis() / (float)speed) * range);
+}
+
+// Fungsi loading bar yang bener
+void drawLoadingBar(int x, int y, int w, int h, int progress) {
+    ssd1306_draw_rectangle(0, x, y, w, h, WHITE);
+    int fillW = (w * progress) / 100;
+    if (fillW > w) fillW = w;
+    ssd1306_fill_rectangle(0, x, y, fillW, h, WHITE);
+    
+    int offset = (millis() / 50) % 20;
+    for(int i = -20; i < fillW; i += 15) {
+        int lineX = x + i + offset;
+        if(lineX > x && lineX < x + fillW) {
+            // Kalau ssd1306_draw_line gak ada, pake vline aja buat efek
+            for(int j=0; j<h; j++) ssd1306_draw_pixel(0, lineX, y+j, BLACK);
+        }
+    }
 }
 // Fungsi gambar bintang gerak (Starfield)
 void drawStarfield() {
@@ -77,14 +82,11 @@ void drawStarfield() {
 }
 
 // Deklarasi bitmap solver yang ada di boot_system.c biar file ini bisa make juga
-extern void oled_draw_bitmap(uint8_t id, int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, ssd1306_color_t color);
 
 // ==========================================
 // FUNGSI PEMBANTU PENGGANTI ARDUINO
 // ==========================================
-uint32_t millis() {
-    return (uint32_t)(esp_timer_get_time() / 1000);
-}
+
 
 long map(long x, long in_min, long in_max, long out_min, long out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -110,7 +112,7 @@ const char* subMenuSet[]  = { "Brightness", "WiFi Setup", "About RootX", "Reboot
 void tampilkanMenuLogo() {
     ssd1306_clear(0);
     drawStarfield();
-    drawWave() 
+    drawWave();
     
     if(currentMenu == 0)      ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: WIFI", WHITE, BLACK);
     else if(currentMenu == 1) ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: BLE", WHITE, BLACK);
@@ -139,7 +141,7 @@ void tampilkanMenuLogo() {
 void tampilkanMenuUtama() { 
     ssd1306_clear(0);
     drawStarfield();
-    drawWave() 
+    drawWave();
     int totalSub = 0; 
 
     if(currentMenu == 0)      { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: WIFI", WHITE, BLACK); totalSub = 4; }
