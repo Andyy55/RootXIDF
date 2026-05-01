@@ -209,7 +209,7 @@ void tampilkanInputPassword() {
     ssd1306_draw_string_adafruit(0, 5, 1, "ENTER PASSWORD", BLACK, WHITE);
 
     // Tampilan SSID Target di bawah Header
-    char targetBuf[32];
+    char targetBuf[64];
     snprintf(targetBuf, sizeof(targetBuf), "Target: %s", targetTerkunci.ssid);
     ssd1306_draw_string_adafruit(0, 5, 15, targetBuf, WHITE, BLACK);
 
