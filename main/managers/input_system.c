@@ -67,7 +67,6 @@ lastPress = input_millis();
         if (btn == BTN_LEFT) { 
             esp_wifi_stop(); 
             isDeauthSta = false;
-            deauthStateSta = 0;
             appMode = 2; 
     }
     lastPress = input_millis();
@@ -223,7 +222,7 @@ void handleNavigasiScanner(int btn) {
                 targetLockedIdx = scrollPosScanner + cursorInScanner; 
                 targetTerkunci = listWiFi[targetLockedIdx];
                 adaTarget = true; 
-                triggerTrackWifi = true;
+               // triggerTrackWifi = true;
                 scannerState = 4;   
                 contextCursor = 0;  
             }
@@ -247,7 +246,7 @@ void handleNavigasiScanner(int btn) {
         
         else if (btn == BTN_OK) {
         if (contextCursor == 0) { appMode = 2; deauthState = 0; } 
-        else if (contectCursor == 1) {
+        else if (contextCursor == 1) {
         if (targetTerkunci.is_open) { 
             triggerConnect = true; 
             inputPassword[0] = '\0'; // Kosongin pass
