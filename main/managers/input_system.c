@@ -27,7 +27,7 @@ void handleNavigasiScanner(int btn);
 void handleNavigasiDeauth(int btn);
 void handleNavigasiSpam(int btn);
 void handleNavigasiScanSta(int btn);
-void handletrackmenu(int btn)
+void handletrackmenu(int btn);
 
 void handleJoystick() {
     static uint32_t lastPress = 0;
