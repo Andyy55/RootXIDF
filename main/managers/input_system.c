@@ -5,6 +5,7 @@
 #include "esp_timer.h"
 #include "globals.h"
 #include "esp_wifi.h"
+#include <string.h>
 
 // Pengganti String biar enteng dan cepat!
 #define BTN_NONE  0
@@ -48,7 +49,7 @@ void handleJoystick() {
     if (appMode == 2) { handleNavigasiDeauth(btn);  lastPress = input_millis(); return; }
     if (appMode == 4) { handleNavigasiSpam(btn);    lastPress = input_millis(); return; } 
      if (appMode == 5) { handleNavigasiScanSta(btn); lastPress = input_millis(); return; }
-     if (appMode == 8) { handleInputPassword(btn); lastPress = input_millis(); return; 
+     if (appMode == 8) { handleInputPassword(btn); lastPress = input_millis(); return; }
     
      
     if (appMode == 9) { // Misal appMode 11 itu Connected WiFi
