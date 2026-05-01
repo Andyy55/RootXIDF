@@ -27,6 +27,7 @@ void handleNavigasiScanner(int btn);
 void handleNavigasiDeauth(int btn);
 void handleNavigasiSpam(int btn);
 void handleNavigasiScanSta(int btn);
+void handletrackmenu(int btn)
 
 void handleJoystick() {
     static uint32_t lastPress = 0;
@@ -138,6 +139,7 @@ void handleJoystick() {
 void handletrackmenu(int btn) {
 if (btn == BTN_LEFT) scannerState = 4; 
 }
+
 void handleNavigasiScanner(int btn) {
     if (scannerState == 0) {
         if (btn == BTN_LEFT) appMode = 0; 
@@ -166,7 +168,7 @@ void handleNavigasiScanner(int btn) {
                 targetLockedIdx = scrollPosScanner + cursorInScanner; 
                 targetTerkunci = listWiFi[targetLockedIdx];
                 adaTarget = true; 
-                trigger track = true;
+                triggerTrack = true;
                 scannerState = 4;   
                 contextCursor = 0;  
             }
