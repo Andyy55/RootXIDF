@@ -16,13 +16,16 @@
 #define BLACK 0
 #define MAX_STARS 15
 
-extern void tampilkanMenuLogo(void);
-extern void tampilkanMenuUtama(void);
 extern void handleJoystick(void);
+extern void tampilkanLogoDulu(void);
+extern void tampilkanIntroAnime(void);
+extern void tampilkanTeksSplash(void);
+void tampilkanMenuLogo(void);
+void tampilkanMenuUtama(void);
 
 void tampilkanMenuLogo(void);
 void tampilkanMenuUtama(void);
-void tampilkanWifiScan(void);
+void tampilkanWifiScanner(void);
 void tampilkanDeauthScreen(void);
 void tampilkanBrightness(void);
 void tampilkanSpamScreen(const char* judul, const char* subTeks);
@@ -533,7 +536,7 @@ void tampilkanWifiScanner() {
             
             // Set Teks dan Icon
             if(i == 0)      { teks = "DEAUTH "; icon = iconSmall_skull; }
-            else if(i == 1) { teks = "CONNECT"; icon = iconSmall_conn; }
+            else if(i == 1) { teks = "EVIL TWIN"; icon = iconSmall_conn; }
             else if(i == 2) { teks = "CLIENTS"; icon = iconSmall_sniff; }
             else if(i == 3) { teks = "TRACK  "; icon = iconSmall_wifi;  } 
             else            { teks = "DETAILS"; icon = iconSmall_info;  }

@@ -13,7 +13,7 @@
 #include "lwip/netdb.h"
 
 
-
+void startEvilTwin(void);
 // Fungsi sakti buat ubah Teks MAC ke Bytes
 void stringToMac(const char* macStr, uint8_t *macAddr) {
     unsigned int m[6];
