@@ -369,7 +369,8 @@ void handleNavigasiSpam(int btn) {
 void handleEvilTwinInput(int btn) {
     if (evilTwinState == 0) {
         if (btn == BTN_RIGHT || btn == BTN_OK) {
-            startEvilTwin(); // Jalankan mesinnya!
+            triggerEvilTwin = true;
+            
         } else if (btn == BTN_LEFT) {
             appMode = 1; // Balik ke menu scanner
         }
