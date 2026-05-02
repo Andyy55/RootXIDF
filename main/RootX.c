@@ -55,6 +55,14 @@ bool triggerConnect = false;
 bool triggerDisconnect = false;
 
 
+int dinoY = 27;        // Sekarang nyentuh tanahnya di Y=27 karena sprite 16px
+int dinoVy = 0;        
+bool isJumping = false;
+int cactusX = 128;     
+int dinoScore = 0;
+int dinoLimit = 500;   
+int dinoState = 0;     
+int endTimer = 0;      
 
 int deauthProgress = 0;
 bool adaTargetSta = false;
@@ -185,6 +193,8 @@ tampilkanInputPassword();
 tampilkanConnectedWiFi();
 }else if (appMode == 10) {
     tampilkanStatusKoneksi();
+} else if (appMode == 11) {
+renderDinoGame();
 }
 
 
