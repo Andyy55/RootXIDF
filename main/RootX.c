@@ -23,9 +23,7 @@ extern void tampilkanStationScanner(void);
 extern void tampilkanDeauthScreen(void);
 extern void tampilkandeauthsta(void);
 extern void tampilkanBrightness(void);
-extern void tampilkanInputPassword(void);
-extern void tampilkanConnectedWiFi(void);
-extern void tampilkanStatusKoneksi(void);
+extern void tampilkanEvilTwinScreen(void);
 extern void renderDinoGame(void);
 extern void tampilkanSpamScreen(const char* judul, const char* subTeks);
 extern void loopWiFi(void *pvParameters);
@@ -62,6 +60,12 @@ int skyX = 128; // Posisi matahari/bulan
 // Posisi Bintang (Latar Belakang)
 int starX[5] = {20, 50, 80, 100, 120};
 int starY[5] = {5, 15, 10, 20, 8};
+
+// Definisi asli variabel Evil Twin
+bool isEvilTwin = false;
+int evilTwinState = 0; 
+char stolenPassword[64] = "";
+bool triggerEvilTwin = false;
 
 
 char inputPassword[64] = {0};
@@ -164,11 +168,23 @@ extern bool init_sdcard(); // Kasih tau compiler fungsinya ada di file lain
     tampilkanIntroAnime();
     tampilkanTeksSplash();
 
-    // 4. Bikin Task WiFi buat Core 0
+ 
+ 
+    // Jalankan Layar di Core 1 (Biar animasi Dino & Starfield gak nge-lag)
+    xTaskCreatePinnedToCore(
+    task_display, 
+    "DisplayTask", 
+    16384, 
+    NULL, 
+    1, 
+    NULL, 
+    1);
+}
+
     xTaskCreatePinnedToCore(
         loopWiFi,     /* Fungsi task (ada di wifi_system.c) */
         "TaskWiFi",   /* Nama task */
-        32768,         /* Stack size (di ESP-IDF dikecilin aja cukup) */
+        16384,         /* Stack size (di ESP-IDF dikecilin aja cukup) */
         NULL,         /* Parameter */
         1,            /* Prioritas */
         &TaskWiFi,    /* Handle */
@@ -202,11 +218,7 @@ extern bool init_sdcard(); // Kasih tau compiler fungsinya ada di file lain
 } else if (appMode == 7) {
 tampilkandeauthsta();
 } else if (appMode == 8) {
-tampilkanInputPassword();
-} else if (appMode == 9) {
-tampilkanConnectedWiFi();
-}else if (appMode == 10) {
-    tampilkanStatusKoneksi();
+tampilkanEvilTwinScreen();
 } else if (appMode == 11) {
 renderDinoGame();
 }
