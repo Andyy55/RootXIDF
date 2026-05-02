@@ -146,6 +146,28 @@ static void sanitize_ssid(const uint8_t* input_ssid, char* output_buffer, size_t
     }
 }
 
+static void wifi_event_handler(void* arg, esp_event_base_t event_base,
+                                int32_t event_id, void* event_data) {
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        esp_wifi_connect();
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        statusKoneksi = 2; // GAGAL (Sandi salah / Sinyal ilang)
+        isWiFiConnected = false;
+        printf("Koneksi Gagal, Cek Password!\n");
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        statusKoneksi = 1; // BERHASIL (Dapet IP)
+        isWiFiConnected = true;
+        
+        // Simpan info buat menu Connected WiFi
+        strcpy(connSSID, targetTerkunci.ssid);
+        connRSSI = targetTerkunci.rssi;
+        connCH = targetTerkunci.channel;
+        
+        printf("Koneksi Berhasil! IP: " IPSTR "\n", IP2STR(&event->ip_info.ip));
+    }
+}
+
 
 void loopWiFi(void * pvParameters) {
 
@@ -160,7 +182,11 @@ void loopWiFi(void * pvParameters) {
         esp_wifi_init(&cfg);
         esp_wifi_set_storage(WIFI_STORAGE_RAM);
         isWifiInit = true;
+        esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL);
+esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL);
     }
+// Tambahin ini sebelum masuk ke while(1) di loopWiFi
+
 
     for(;;) {
         if (isSpamming) {
@@ -189,43 +215,24 @@ void loopWiFi(void * pvParameters) {
             }
             vTaskDelay(pdMS_TO_TICKS(50)); 
         } 
-       // Di dalam loopWiFi
-else if (triggerConnect) {
-    statusKoneksi = 0; // Set ke status "Connecting"
-    appMode = 10;      // Paksa layar pindah ke status koneksi
-    esp_wifi_set_promiscuous(false);
-    
-    esp_wifi_stop();
-    esp_wifi_set_mode(WIFI_MODE_STA);
-    esp_wifi_start();
-    
-    wifi_config_t sta_config = {0};
-    strncpy((char*)sta_config.sta.ssid, targetTerkunci.ssid, 32);
-    strncpy((char*)sta_config.sta.password, inputPassword, 64);
-    
-    esp_wifi_set_config(WIFI_IF_STA, &sta_config);
-    
-    // Proses konek
-    if (esp_wifi_connect() == ESP_OK) {
-        // Tunggu bentar buat mastiin dapet IP
-        vTaskDelay(pdMS_TO_TICKS(2000)); 
-        isWiFiConnected = true;
-        statusKoneksi = 1; // Berhasil
-        esp_netif_ip_info_t ip_info;
-        esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"), &ip_info);
-        printf("IP Address: " IPSTR "\n", IP2STR(&ip_info.ip));
+        else if (triggerConnect) {
+            statusKoneksi = 0; // Set status lagi "Connecting..."
+            
+            wifi_config_t wifi_config = {};
+            strcpy((char*)wifi_config.sta.ssid, targetTerkunci.ssid);
+            strcpy((char*)wifi_config.sta.password, inputPassword);
 
-    } else {
-        isWiFiConnected = false;
-        statusKoneksi = 2; // Gagal
-    }
-    
-    triggerConnect = false;
-    
-    // Kasih waktu 3 detik biar lu bisa baca statusnya, baru balik ke menu
-    vTaskDelay(pdMS_TO_TICKS(3000));
-    appMode = 0; // Balik ke menu utama
-}
+            esp_wifi_set_mode(WIFI_MODE_STA);
+            esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+            esp_wifi_start();
+            esp_wifi_connect();
+            
+            // JANGAN langsung set statusKoneksi = 1 di sini!
+            // Kita biarin Event Handler yang ngerjain di bawah.
+            
+            triggerConnect = false; 
+        }
+
 
 
         if (triggerDisconnect) {

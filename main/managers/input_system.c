@@ -93,10 +93,12 @@ lastPress = input_millis();
         if (btn == BTN_UP) {
             if (brightnessValue < 245) brightnessValue += 10;
             setOledBrightness(brightnessValue);
+            printf("Brightness set to: %d\n", brightnessValue);
         }
         else if (btn == BTN_DOWN) {
             if (brightnessValue > 10) brightnessValue -= 10;
             setOledBrightness(brightnessValue);
+            printf("Brightness set to: %d\n", brightnessValue);
         }
         else if (btn == BTN_LEFT) appMode = 0;
         

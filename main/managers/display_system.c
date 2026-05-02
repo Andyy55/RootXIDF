@@ -212,7 +212,7 @@ void tampilkanMenuLogo() {
 
     // Font library ini ukurannya fix, jadi kita akalin kursornya aja
     ssd1306_draw_string_adafruit(0, 20, 30, "<", WHITE, BLACK);
-    ssd1306_draw_string_adafruit(0, 103, 30, ">", WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 102, 30, ">", WHITE, BLACK);
     ssd1306_draw_string_adafruit(0, 40, 56, ">SELECT<", WHITE, BLACK); 
     
     ssd1306_refresh(0, true);
@@ -240,6 +240,7 @@ void tampilkanMenuUtama() {
         int textColor = WHITE;
         int bgColor = BLACK;
         int iconBounce = 0; // Default: Icon diem kaga gerak
+        int tambahansu = 0;
         
         // --- LOGIKA MENU YANG DIPILIH (YANG ADA BLOK PUTIHNYA) ---
         if(itemIndex == currentSub) { 
@@ -258,6 +259,7 @@ void tampilkanMenuUtama() {
             
             // 3. Icon loncat cuma buat menu ini aja
             iconBounce = getBounce(200, 2); 
+            tambahansu = 4
             
             textColor = BLACK; 
             bgColor = WHITE;
@@ -272,7 +274,7 @@ void tampilkanMenuUtama() {
         else iconSmall = iconListGame[itemIndex];
 
         // Gambar Icon (Kalo diselect dia ada iconBounce-nya, kalo ngga ya + 0)
-        oled_draw_bitmap(0, 2, (yPos - 1) + iconBounce, iconSmall, 10, 10, textColor);
+        oled_draw_bitmap(0, 2 + tambahansu, (yPos - 1) + iconBounce, iconSmall, 10, 10, textColor);
         
         // Setting Teks
         const char* textToPrint = "";
@@ -283,7 +285,7 @@ void tampilkanMenuUtama() {
         else textToPrint = subMenuGame[itemIndex];
 
         // Gambar Teks (Kalo diselect, text-nya ikutan goyang dikit biar asik)
-        ssd1306_draw_string_adafruit(0, 18, yPos + iconBounce, (char*)textToPrint, textColor, bgColor);
+        ssd1306_draw_string_adafruit(0, 18 + tambahansu, yPos, (char*)textToPrint, textColor, bgColor);
     }
 
     ssd1306_refresh(0, true);
@@ -755,7 +757,7 @@ void tampilkandeauthsta() {
         
         int animasiProgress = (millis() / 30) % 100; 
 
-        drawLoadingBar(14, 45, 100, 8, animasiProgress);
+        drawLoadingBar(14, 42, 100, 8, animasiProgress);
         
         
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
@@ -795,7 +797,7 @@ void tampilkanDeauthScreen() {
         
         int animasiProgress = (millis() / 30) % 100; 
 
-        drawLoadingBar(14, 45, 100, 8, animasiProgress);
+        drawLoadingBar(14, 42, 100, 8, animasiProgress);
         
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 2, 55, "< STOP ATTACK", BLACK, WHITE);
@@ -827,21 +829,24 @@ void tampilkanBrightness() {
 }
 
 void setOledBrightness(uint8_t level) {
-    // Kita pake i2c_cmd_link biar komunikasinya resmi (Standard ESP-IDF)
-    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
+    // Kita pake fungsi manual dari i2c.c lu
+    i2c_start();
     
-    // Alamat OLED biasanya 0x3C
-    i2c_master_write_byte(cmd, (0x3C << 1) | I2C_MASTER_WRITE, true);
+    // 0x3C << 1 jadi 0x78 (Alamat OLED)
+    i2c_write(0x78); 
     
-    i2c_master_write_byte(cmd, 0x00, true); // Control byte: Berikutnya adalah COMMAND
-    i2c_master_write_byte(cmd, 0x81, true); // Perintah Contrast Control
-    i2c_master_write_byte(cmd, level, true); // Nilai brightness (0-255)
+    // 0x00 artinya byte berikutnya adalah COMMAND
+    i2c_write(0x00); 
     
-    i2c_master_stop(cmd);
-    i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(10)); // Kirim!
-    i2c_cmd_link_delete(cmd);
+    // Perintah 0x81 (Contrast Control)
+    i2c_write(0x81); 
+    
+    // Kirim nilai kecerahan (0-255)
+    i2c_write(level); 
+    
+    i2c_stop();
 }
+
 
 
 void tampilkanSpamScreen(const char* judul, const char* subTeks) {
@@ -865,8 +870,9 @@ void tampilkanSpamScreen(const char* judul, const char* subTeks) {
         snprintf(buf, sizeof(buf), "Mode: %s", subTeks);
         ssd1306_draw_string_adafruit(0, 0, 25, buf, WHITE, BLACK);
         
-        int bar = (millis() * 30) % 128;
-        ssd1306_draw_hline(0, 0, 45, bar, WHITE);
+        
+        int animasiProgress = (millis() / 30) % 100; 
+        drawLoadingBar(14, 42, 100, 8, animasiProgress);
         
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 2, 55, "< STOP", BLACK, WHITE);
