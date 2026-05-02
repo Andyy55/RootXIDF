@@ -252,7 +252,7 @@ void handleNavigasiScanner(int btn) {
         else if (btn == BTN_OK) {
         if (contextCursor == 0) { appMode = 2; deauthState = 0; } 
         else if (contextCursor == 1) {
-           appMode = 8
+           appMode = 8;
         }
         else if (contextCursor == 2) { appMode = 5; scannerStateSta = 0; contextCursor = 0; }
         else if (contextCursor == 3) { // TRACK
