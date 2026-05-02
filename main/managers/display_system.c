@@ -18,6 +18,18 @@ extern tampilkanMenuLogo(void);
 extern void tampilkanMenuUtama(void);
 extern void handleJoystick(void);
 
+void tampilkanMenuLogo(void);
+void tampilkanMenuUtama(void);
+void tampilkanWifiScan(void);
+void tampilkanDeauthScreen(void);
+void tampilkanBrightness(void);
+void tampilkanSpamScreen(void);
+void tampilkanStationScanner(void);
+void tampilkanTrackScreen(void);
+void tampilkandeauthsta(void);
+void tampilkanEvilTwinScreen(void);
+void renderDinoGame(void);
+
 bool introDone = false; // Penanda intro sudah lewat
 
 void init_joystick() {
