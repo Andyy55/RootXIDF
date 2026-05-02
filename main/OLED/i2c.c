@@ -48,7 +48,7 @@
 //! @brief GPIO bit location for SCL pin
 //#define SCL_BIT  BIT4
 static inline void delay_nop() {
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 55; i++) {
         asm volatile("nop");
     }
 }
