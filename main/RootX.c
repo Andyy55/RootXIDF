@@ -109,36 +109,23 @@ int appMode = 0;
 TaskHandle_t TaskWiFi;
 
 // --- FUNGSI SETUP JOYSTICK C-MURNI ---
-void init_joystick() {
-    int pins[] = {PIN_UP, PIN_DOWN, PIN_LEFT, PIN_RIGHT, PIN_OK};
-    for(int i = 0; i < 5; i++) {
-        gpio_set_direction(pins[i], GPIO_MODE_INPUT);
-        gpio_set_pull_mode(pins[i], GPIO_PULLUP_ONLY);
-    }
-}
+
 
 // ==========================================
 // JANTUNG UTAMA FIRMWARE LU (Pengganti Setup & Loop)
 // ==========================================
 void app_main(void) {
     ESP_LOGI("RootX", "System Booting...");
+        xTaskCreatePinnedToCore(
+    task_display,    // Nama fungsinya
+    "DisplayTask",   // Nama bebas buat debug
+    16384,            // Ukuran memori (8KB cukup kok)
+    NULL,            // Gak ada parameter tambahan
+    1,               // Prioritas (rendah aja gapapa)
+    NULL,            // Gak butuh handle
+    1                // <--- INI KUNCINYA (1 berarti Core 1)
+);
 
-    // 1. Setup Input Joystick
-    init_joystick();
-
-    // 2. Setup Layar (Pake library Software I2C lu)
-    // NOTE: Cek fungsi aslinya di file ssd1306.h lu, biasanya namanya ssd1306_init()
-    // ssd1306_init(ID, SCL_PIN, SDA_PIN);
-// 1. Nyalain Mesin OLED
-if (ssd1306_init(0, 9, 8)) {
-    vTaskDelay(pdMS_TO_TICKS(100)); // <--- KUNCI SAKTI: Kasih napas 100ms
-    ssd1306_select_font(0, 0);
-    ssd1306_clear(0);
-    ssd1306_refresh(0, true);
-    ESP_LOGI("RootX", "OLED Ready!");
-} else {
-    ESP_LOGE("RootX", "OLED Gagal Inisialisasi!");
-}
 
 extern bool init_sdcard(); // Kasih tau compiler fungsinya ada di file lain
     if (init_sdcard()) {
@@ -148,19 +135,6 @@ extern bool init_sdcard(); // Kasih tau compiler fungsinya ada di file lain
         ESP_LOGE("RootX", "Yah, SD Card Gagal... Cek kabel GPIO 3 lu!");
     }
     
-    // (Biar layar muter 180 derajat, nanti cari fungsi flip di library barunya)
-
-    // 3. Booting Screen
-    tampilkanLogoDulu();
-    tampilkanIntroAnime();
-    tampilkanTeksSplash();
-
- 
- 
-    // Jalankan Layar di Core 1 (Biar animasi Dino & Starfield gak nge-lag)
-   
-
-
     xTaskCreatePinnedToCore(
         loopWiFi,     /* Fungsi task (ada di wifi_system.c) */
         "TaskWiFi",   /* Nama task */
@@ -170,15 +144,6 @@ extern bool init_sdcard(); // Kasih tau compiler fungsinya ada di file lain
         &TaskWiFi,    /* Handle */
         0             /* Core 0 */
     );
-    xTaskCreatePinnedToCore(
-    task_display,    // Nama fungsinya
-    "DisplayTask",   // Nama bebas buat debug
-    16384,            // Ukuran memori (8KB cukup kok)
-    NULL,            // Gak ada parameter tambahan
-    1,               // Prioritas (rendah aja gapapa)
-    NULL,            // Gak butuh handle
-    1                // <--- INI KUNCINYA (1 berarti Core 1)
-);
 
 
     // 5. Pengganti loop()
