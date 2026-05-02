@@ -915,101 +915,99 @@ void renderDinoGame() {
     if (dinoHighScore == -1) dinoHighScore = baca_highscore_dino();
     ssd1306_clear(0);
 
-    // --- LOGIC SIANG MALAM (Tiap 1000 poin, malam cuma bentar) ---
+    // --- LOGIC SIANG MALAM (Default: Hitam/Siang) ---
+    // Awal game (Siang) = Hitam. 
+    // Pas skor 1000-1300, 2000-2300, dst = Putih (Malam/Invert).
     int cycle = dinoScore % 1000;
-    bool isNight = (cycle > 0 && cycle < 300 && dinoScore > 0);
+    bool isNight = (cycle >= 0 && cycle < 300 && dinoScore >= 1000); 
     ssd1306_invert_display(0, isNight);
 
-    // --- UI: SKOR DI KANAN ATAS ---
+    // --- UI: SKOR ---
     char scoreBuf[32];
     snprintf(scoreBuf, sizeof(scoreBuf), "HI %05d  %05d", dinoHighScore, dinoScore);
     ssd1306_draw_string_adafruit(0, 35, 0, scoreBuf, WHITE, BLACK);
 
     if (dinoState == 0) { // SEDANG MAIN
-        // Update physics & speed
         rawScore += (gameSpeed * 0.15);
         dinoScore = (int)rawScore;
-        gameSpeed = 4.0 + (dinoScore / 250.0);
-        if (gameSpeed > 8.0) gameSpeed = 8.0;
+        gameSpeed = 4.0 + (dinoScore / 500.0);
+        if (gameSpeed > 8.5) gameSpeed = 8.5;
 
-        // Loncat (Dino 24px)
+        // Physics Loncat (Gravitasi 1.6 biar mantul cepet)
         dinoY += dinoVy;
-        if (isJumping) dinoVy += 1.8; 
+        if (isJumping) dinoVy += 1.6; 
         if (dinoY >= 36) { dinoY = 36; isJumping = false; dinoVy = 0; }
 
-        // --- BACKGROUND: MATAHARI/BULAN & BINTANG ---
+        // --- BACKGROUND ---
         skyX -= 0.5;
         if (skyX < -20) skyX = 128;
         if (isNight) {
             oled_draw_bitmap(0, (int)skyX, 8, bulan_16, 16, 16, WHITE);
-            for(int i=0; i<5; i++) ssd1306_draw_pixel(0, starX[i], starY[i], WHITE);
         } else {
             oled_draw_bitmap(0, (int)skyX, 8, matahari_16, 16, 16, WHITE);
         }
 
-        // --- SISTEM MUSUH (SPAWN) ---
+        // --- SISTEM MUSUH ---
         obstacleX -= (int)gameSpeed;
         if (obstacleX < -24) {
             obstacleX = 128 + (rand() % 40);
-            obstacleType = rand() % 3; // 0: Kaktus Kecil, 1: Kaktus Triple, 2: Burung
+            obstacleType = rand() % 3; 
             
             if (obstacleType == 2) {
-                int heights[] = {15, 28, 38}; 
-                obstacleY = heights[rand() % 3];
+                // BURUNG: Cuma 2 posisi biar gak nanggung
+                // 15 = Tinggi (Dino diem aja selamet), 32 = Rendah (Dino wajib loncat)
+                int heights[] = {15, 32}; 
+                obstacleY = heights[rand() % 2];
             } else {
-                // Kaktus Kecil (Type 0) lebih rendah, Kaktus Triple (Type 1) lebih tinggi
                 obstacleY = (obstacleType == 0) ? 44 : 38;
             }
         }
 
         // --- DRAW GROUND ---
+        // --- DRAW GROUND (TANAH DINAMIS) ---
+        // 1. Garis horizontal utama tanah
         ssd1306_draw_hline(0, 0, 60, 128, WHITE);
-        for(int x=0; x<128; x+=20) {
-            int groundX = (x - ((int)rawScore % 20));
-            ssd1306_draw_pixel(0, groundX, 62, WHITE);
+
+        // 2. Efek tekstur tanah (Bintik/Pasir) yang gerak sesuai kecepatan
+        for (int i = 0; i < 128; i += 16) {
+            // Kita pake modulo agar posisinya looping terus dari kanan ke kiri
+            int scrollX = (i - ((int)rawScore % 128));
+            if (scrollX < 0) scrollX += 128;
+
+            // Gambar beberapa titik/garis kecil sebagai tekstur tanah di bawah garis
+            ssd1306_draw_pixel(0, scrollX, 62, WHITE);
+            ssd1306_draw_pixel(0, (scrollX + 7) % 128, 61, WHITE);
+            
+            // Tambah garis kecil biar lebih mirip Chrome
+            if (i % 32 == 0) {
+                ssd1306_draw_hline(0, scrollX, 61, 4, WHITE);
+            }
         }
 
-        // --- RENDER MUSUH (DI SINI PERBAIKANNYA) ---
-        if (obstacleType == 0) {
-            // TYPE 0: KAKTUS KECIL (16x16)
-            oled_draw_bitmap(0, obstacleX, 44, kaktus_16, 16, 16, WHITE);
-        } else if (obstacleType == 1) {
-            // TYPE 1: KAKTUS TRIPLE (24x24)
-            oled_draw_bitmap(0, obstacleX, 38, kaktus_triple, 24, 24, WHITE);
-        } else {
-            // TYPE 2: BURUNG (NGEPAK)
-            const unsigned char* pteroFrame = ((millis()/150)%2==0) ? ptero_up : ptero_down;
-            oled_draw_bitmap(0, obstacleX, obstacleY, pteroFrame, 16, 16, WHITE);
-        }
 
-        // --- DRAW DINO (ANIMASI KAKI) ---
+        // --- DRAW DINO ---
         const unsigned char* dinoFrame = (dinoY < 36) ? dino_lari1 : (((millis()/100)%2==0) ? dino_lari1 : dino_lari2);
-        oled_draw_bitmap(0, 15, dinoY, dinoFrame, 24, 24, WHITE);
+        oled_draw_bitmap(0, 15, (int)dinoY, dinoFrame, 24, 24, WHITE);
 
         // --- COLLISION DETECTION (HITBOX PRESISI) ---
-        if (obstacleX > 10 && obstacleX < 35) {
-            int d_top = dinoY + 4, d_bottom = dinoY + 22;
+        if (obstacleX > 12 && obstacleX < 30) { // Area horizontal Dino
+            int d_top = dinoY + 4;
+            int d_bottom = dinoY + 20;
             int o_top, o_bottom;
 
-            if (obstacleType == 0) { o_top = 44; o_bottom = 60; }      // Kaktus Kecil
-            else if (obstacleType == 1) { o_top = 38; o_bottom = 60; } // Kaktus Triple
-            else { o_top = obstacleY + 2; o_bottom = obstacleY + 14; } // Burung
+            if (obstacleType == 0) { o_top = 44; o_bottom = 60; }
+            else if (obstacleType == 1) { o_top = 38; o_bottom = 60; }
+            else { o_top = obstacleY + 4; o_bottom = obstacleY + 12; } // Burung lebih tipis
 
             if (!(d_bottom < o_top || d_top > o_bottom)) {
                 dinoState = 1; 
-                ssd1306_invert_display(0, false);
-                if (dinoScore > dinoHighScore) {
-                    dinoHighScore = dinoScore;
-                    simpan_highscore_dino(dinoHighScore);
-                }
+                ssd1306_invert_display(0, false); // Balikin item pas mati
             }
         }
     } 
-    else { // STATE MATI
+    else { // GAME OVER
         ssd1306_draw_string_adafruit(0, 35, 25, "G A M E  O V E R", WHITE, BLACK);
-        oled_draw_bitmap(0, 52, 40, iconSmall_skull, 10, 10, WHITE);
-        ssd1306_draw_string_adafruit(0, 28, 54, "[OK] RESTART", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 28, 50, "[OK] RESTART", WHITE, BLACK);
     }
-
     ssd1306_refresh(0, true);
 }

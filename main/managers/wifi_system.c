@@ -152,34 +152,30 @@ static int retry_count = 0;
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data) {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        // Kasih napas 100ms biar hardware stabil setelah start
+        vTaskDelay(pdMS_TO_TICKS(100));
         esp_wifi_connect();
+        printf("Handler: Mencoba Konek ke AP...\n");
     } 
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        // Cek dulu, ini emang gagal konek atau kita yang sengaja mutusin?
-        if (statusKoneksi == 0 && retry_count < 5) { 
+        // Biar gak tahun depan, batasi retry cuma pas statusKoneksi == 0 (sedang usaha)
+        if (statusKoneksi == 0 && retry_count < 3) {
             retry_count++;
-            printf("Koneksi gagal, nyoba lagi... (%d/5)\n", retry_count);
-            esp_wifi_connect(); 
-        } else if (statusKoneksi != 3) { // 3 itu mode Disconnecting sengaja
-            statusKoneksi = 2; // FIX GAGAL
-            printf("Gagal Total! Cek Password lu Cok.\n");
+            vTaskDelay(pdMS_TO_TICKS(1000)); // Jeda 1 detik tiap gagal
+            esp_wifi_connect();
+            printf("Gagal, nyoba lagi (%d/3)...\n", retry_count);
+        } else if (statusKoneksi == 0) {
+            statusKoneksi = 2; // GAGAL (Wrong Password / Sinyal ampas)
+            printf("Koneksi Fix Gagal Cok!\n");
         }
     } 
-
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        statusKoneksi = 1; // BERHASIL (Dapet IP)
-        isWiFiConnected = true;
-        retry_count = 0; // Reset counter kalo sukses
-        
-        // Simpan info buat menu
-        strcpy(connSSID, targetTerkunci.ssid);
-        connRSSI = targetTerkunci.rssi;
-        connCH = targetTerkunci.channel;
-        
-        printf("Koneksi Berhasil! IP: " IPSTR "\n", IP2STR(&event->ip_info.ip));
+        statusKoneksi = 1; // BERHASIL
+        retry_count = 0;
+        printf("Koneksi Berhasil! IP didapat.\n");
     }
 }
+
 
 
 
@@ -229,37 +225,30 @@ esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_h
             }
             vTaskDelay(pdMS_TO_TICKS(50)); 
         } 
-                      else if (triggerConnect) {
-            statusKoneksi = 0; // Tampilan: Connecting...
-            retry_count = 0;   // Reset hitungan retry
+                              else if (triggerConnect) {
+            statusKoneksi = 0; // Connecting...
+            retry_count = 0;
             
-            // --- JURUS ANTI-BENTROK ---
+            // --- BERSIHIN TOTAL ---
             esp_wifi_disconnect(); 
-            esp_wifi_stop(); // Paksa matiin radio dulu biar gak "return error"
+            esp_wifi_stop(); // Matiin dulu biar state-nya IDLE
             
-            // Tunggu bentar sampe radio bener-bener berenti
-            vTaskDelay(pdMS_TO_TICKS(100));
-
-            wifi_config_t wifi_config = {0}; // Hapus semua sampah konfigurasi lama
+            wifi_config_t wifi_config = {0};
             strcpy((char*)wifi_config.sta.ssid, targetTerkunci.ssid);
             strcpy((char*)wifi_config.sta.password, inputPassword);
 
             esp_wifi_set_mode(WIFI_MODE_STA);
             esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
             
-            esp_wifi_start(); // Nyalain mesin WiFi lagi
+            // --- KUNCI SAKTI ---
+            // Kita cuma panggil START. Nanti si wifi_event_handler 
+            // bakal otomatis panggil connect pas dapet event STA_START.
+            esp_wifi_start(); 
             
-            // Kasih napas 100ms lagi sebelum perintah CONNECT
-            vTaskDelay(pdMS_TO_TICKS(100));
-            
-            // BARU TEMBAK!
-            esp_err_t err = esp_wifi_connect();
-            if (err == ESP_ERR_WIFI_CONN) {
-                printf("WiFi udah lagi proses konek, kalem...\n");
-            }
-
+            printf("WiFi Mesin Start... Menunggu Handler Konek.\n");
             triggerConnect = false; 
         }
+
 
 
 
