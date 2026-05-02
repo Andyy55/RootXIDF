@@ -459,7 +459,7 @@ void handleDinoInput(int btn) {
             rawScore = 0;
             gameSpeed = 3.0;
             obstacleX = 128;
-            dinoY = 32;
+            dinoY = 36;
             dinoVy = 0;
             isJumping = false;
             dinoState = 0;

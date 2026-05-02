@@ -229,31 +229,38 @@ esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_h
             }
             vTaskDelay(pdMS_TO_TICKS(50)); 
         } 
-                else if (triggerConnect) {
-            statusKoneksi = 0; // Set tampilan "Connecting..."
-            retry_count = 0;
+                      else if (triggerConnect) {
+            statusKoneksi = 0; // Tampilan: Connecting...
+            retry_count = 0;   // Reset hitungan retry
             
-            // --- JURUS PEMBERSIH ---
-            esp_wifi_disconnect(); // Putusin yang lama
-            esp_wifi_stop();       // MATIIN TOTAL dulu biar gak "return error"
+            // --- JURUS ANTI-BENTROK ---
+            esp_wifi_disconnect(); 
+            esp_wifi_stop(); // Paksa matiin radio dulu biar gak "return error"
             
-            wifi_config_t wifi_config = {0}; // Bersihin sampah memori
+            // Tunggu bentar sampe radio bener-bener berenti
+            vTaskDelay(pdMS_TO_TICKS(100));
+
+            wifi_config_t wifi_config = {0}; // Hapus semua sampah konfigurasi lama
             strcpy((char*)wifi_config.sta.ssid, targetTerkunci.ssid);
             strcpy((char*)wifi_config.sta.password, inputPassword);
 
-            // Set mode dan config pas radio lagi mati
             esp_wifi_set_mode(WIFI_MODE_STA);
             esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
             
-            esp_wifi_start(); // Nyalain lagi mesinnya
+            esp_wifi_start(); // Nyalain mesin WiFi lagi
             
-            // Kasih delay dikit biar hardware siap
+            // Kasih napas 100ms lagi sebelum perintah CONNECT
             vTaskDelay(pdMS_TO_TICKS(100));
             
-            esp_wifi_connect(); // BARU TEMBAK KONEK!
-            
+            // BARU TEMBAK!
+            esp_err_t err = esp_wifi_connect();
+            if (err == ESP_ERR_WIFI_CONN) {
+                printf("WiFi udah lagi proses konek, kalem...\n");
+            }
+
             triggerConnect = false; 
         }
+
 
 
 
