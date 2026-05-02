@@ -913,39 +913,42 @@ void tampilkanSpamScreen(const char* judul, const char* subTeks) {
 
 void renderDinoGame() {
     if (dinoHighScore == -1) dinoHighScore = baca_highscore_dino(); // Load pertama kali
-
     ssd1306_clear(0);
 
-    // --- RENDER FOOTER HILANG, GANTI UI ATAS ---
-    ssd1306_draw_string_adafruit(0, 0, 0, "< BACK", WHITE, BLACK);
+    // --- UI ATAS: HI SCORE & CURRENT SCORE ---
+    ssd1306_draw_string_adafruit(0, 0, 0, "<", WHITE, BLACK); // Icon back simpel
     
-    // Kedip Skor tiap kelipatan 100
-    bool blinkScore = ((dinoScore % 100) < 10 && dinoScore > 0 && dinoState == 0);
-    if (!blinkScore) {
-        char scoreBuf[32];
-        snprintf(scoreBuf, sizeof(scoreBuf), "HI:%05d %05d", dinoHighScore, dinoScore);
-        ssd1306_draw_string_adafruit(0, 45, 0, scoreBuf, WHITE, BLACK);
-    }
+    char scoreBuf[20];
+    snprintf(scoreBuf, sizeof(scoreBuf), "HI:%04d %04d", dinoHighScore, dinoScore);
+    ssd1306_draw_string_adafruit(0, 55, 0, scoreBuf, WHITE, BLACK);
 
-    // --- STATE 0: MAIN ---
-    if (dinoState == 0) {
-        // Sistem Siang Malam (Tiap 500 skor)
+    // --- STATE 0: MODE MAIN ---
+    if (dinoState == 0) { 
         bool isNight = ((dinoScore / 500) % 2 == 1);
         ssd1306_invert_display(0, isNight);
 
-        // Fisika & Kecepatan
-        rawScore += (gameSpeed * 0.1); 
+        // Update Skor & Kecepatan
+        rawScore += (gameSpeed * 0.12);
         dinoScore = (int)rawScore;
-        gameSpeed = 3.0 + (dinoScore / 200.0);
-        if (gameSpeed > 8.0) gameSpeed = 8.0; // Batas max biar mata gak picek
+        gameSpeed = 3.5 + (dinoScore / 300.0);
+        if (gameSpeed > 7.5) gameSpeed = 7.5; // Batas max biar mata gak picek
 
-        // Langit & Bintang
-        skyX -= 1;
+        // Fisika Dino (Napak di Y=36 biar proporsional buat sprite 24px)
+        dinoY += dinoVy;
+        if (isJumping) dinoVy += 1.3; // Gravitasi
+        if (dinoY >= 36) { 
+            dinoY = 36; 
+            isJumping = false; 
+            dinoVy = 0; 
+        }
+
+        // Siklus Langit (Matahari/Bulan & Bintang gerak)
+        skyX -= 1; 
         if (skyX < -20) skyX = 128;
         if (isNight) {
             oled_draw_bitmap(0, skyX, 5, bulan_16, 16, 16, WHITE);
             for(int i=0; i<5; i++) {
-                starX[i] -= 1;
+                starX[i] -= 1; 
                 if(starX[i] < 0) starX[i] = 128;
                 ssd1306_draw_pixel(0, starX[i], starY[i], WHITE);
             }
@@ -953,97 +956,112 @@ void renderDinoGame() {
             oled_draw_bitmap(0, skyX, 5, matahari_16, 16, 16, WHITE);
         }
 
-        // Fisika Lompat
-        dinoY += dinoVy;
-        if (isJumping) dinoVy += 1.2; // Gravitasi
-        if (dinoY >= 32) { // Lantai
-            dinoY = 32;
-            isJumping = false;
-            dinoVy = 0;
-        }
-
-        // Musuh Jalan
-        obstacleX -= (int)gameSpeed; 
-        if (obstacleX < -20) {
-            obstacleX = 128 + (rand() % 60); 
-            obstacleType = rand() % 3; // Acak musuh
+        // --- SISTEM MUSUH ---
+        obstacleX -= (int)gameSpeed;
+        if (obstacleX < -24) { // Kalau musuh udah lewat layar kiri
+            obstacleX = 128 + (rand() % 40);
+            obstacleType = rand() % 3; // 0=Kaktus1, 1=KaktusTriple, 2=Burung
             
             if (obstacleType == 2) { 
-                // Kalo Burung, acak tinggi (bawah, tengah, atas)
-                int h[3] = {32, 20, 10}; 
+                // Tinggi Burung: Atas(Bisa lewat bawah), Tengah, Bawah(Wajib loncat)
+                int h[] = {12, 26, 36}; 
                 obstacleY = h[rand() % 3];
-            } else {
-                obstacleY = 40; // Kaktus di lantai
+            } else { 
+                // Tinggi Kaktus disesuaikan ukurannya biar nempel tanah
+                obstacleY = (obstacleType == 1) ? 36 : 44; 
             }
         }
 
-        // --- RENDER GROUND (TANAH) ---
-        ssd1306_draw_hline(0, 0, 56, 128, WHITE); // Garis solid
-        // Tambahan detail tanah putus-putus
-        for(int p=0; p<128; p+=10) {
-            ssd1306_draw_hline(0, p - ((int)(rawScore*10)%10), 58 + (rand()%3), rand()%5, WHITE);
+        // --- RENDER TANAH ---
+        ssd1306_draw_hline(0, 0, 60, 128, WHITE);
+        for(int p=0; p<128; p+=15) { // Efek tanah jalan putus-putus
+            ssd1306_draw_pixel(0, (p - ((int)(rawScore*5)%15)), 62, WHITE);
         }
 
-        // Gambar Musuh
-        if (obstacleType == 0) oled_draw_bitmap(0, obstacleX, obstacleY, kaktus_16, 16, 16, WHITE);
-        else if (obstacleType == 1) oled_draw_bitmap(0, obstacleX, obstacleY, kaktus_banyak, 16, 16, WHITE);
-        else oled_draw_bitmap(0, obstacleX, obstacleY, ptero_16, 16, 16, WHITE);
+        // --- RENDER MUSUH ---
+        if (obstacleType == 0) {
+            oled_draw_bitmap(0, obstacleX, obstacleY, kaktus_16, 16, 16, WHITE);
+        } else if (obstacleType == 1) {
+            oled_draw_bitmap(0, obstacleX, obstacleY, kaktus_triple, 24, 24, WHITE);
+        } else {
+            // Burung terbang ngepak sayap tiap 150ms
+            const unsigned char* ptero = ((millis()/150)%2==0) ? ptero_frame1 : ptero_frame2;
+            oled_draw_bitmap(0, obstacleX, obstacleY, ptero, 16, 16, WHITE);
+        }
 
-        // Gambar Dino 24x24
-        oled_draw_bitmap(0, 10, dinoY, dino_24, 24, 24, WHITE);
+        // --- RENDER DINO (LARI) ---
+        // Kalau lagi loncat kakinya diem (v1), kalau nempel tanah kakinya ganti-gantian
+        const unsigned char* frame = (dinoY < 36) ? dino_24_v1 : (((millis()/100)%2==0) ? dino_24_v1 : dino_24_v2);
+        oled_draw_bitmap(0, 10, dinoY, frame, 24, 24, WHITE);
 
-        // --- HITBOX PRESISI ---
-        int dinoRight = 10 + 16; 
-        int dinoBottom = dinoY + 20;
-        int obsRight = obstacleX + 12;
-        int obsBottom = obstacleY + 14;
-
-        if (obstacleX < dinoRight && obsRight > 15 && dinoY < obsBottom && dinoBottom > obstacleY) {
-            dinoState = 1; // MODAR
-            ssd1306_invert_display(0, false); // Normalin layar pas mati
-            if (dinoScore > dinoHighScore) {
-                dinoHighScore = dinoScore;
-                simpan_highscore_dino(dinoHighScore);
+        // --- HITBOX PRESISI (Gak Bego) ---
+        // Cek tabrakan cuma pas musuh ada di area X Dino (5 sampe 30)
+        if (obstacleX > 5 && obstacleX < 30) {
+            int d_top = dinoY + 4, d_bottom = dinoY + 22;
+            int o_top = obstacleY + 2, o_bottom = obstacleY + 14;
+            
+            // Logika: Kalo Dino ada di dalem area vertikal musuh = MODAR
+            if (!(d_bottom < o_top || d_top > o_bottom)) {
+                dinoState = 1; 
+                ssd1306_invert_display(0, false); // Normalin layar
+                // Save High Score kalo tembus rekor
+                if (dinoScore > dinoHighScore) { 
+                    dinoHighScore = dinoScore; 
+                    simpan_highscore_dino(dinoHighScore); 
+                }
             }
         }
-
-        if (dinoScore >= dinoLimit) { // BATAS SKOR KETEMU CEWEK
+        
+        // Cek Momen Ending
+        if (dinoScore >= dinoLimit) { 
             dinoState = 2; 
-            endTimer = 0;
-            ssd1306_invert_display(0, false);
+            endTimer = 0; 
+            ssd1306_invert_display(0, false); 
         }
 
     } 
-    // --- STATE 1: MATI (UI BERSIH) ---
-    else if (dinoState == 1) {
-        // Layar udah di-clear di atas, jadi teks gak numpuk
-        ssd1306_draw_string_adafruit(0, 30, 15, "GAME OVER", WHITE, BLACK);
-        char finalSc[32];
-        snprintf(finalSc, sizeof(finalSc), "Score: %d", dinoScore);
-        ssd1306_draw_string_adafruit(0, 35, 30, finalSc, WHITE, BLACK);
-        ssd1306_draw_string_adafruit(0, 20, 45, "[OK] RESTART", WHITE, BLACK);
-        ssd1306_draw_string_adafruit(0, 25, 55, "[<] KELUAR", WHITE, BLACK);
-    } 
-    // --- STATE 2: ENDING CINEMATIC ---
-    else if (dinoState == 2) {
+    // --- STATE 1: MATI ---
+    else if (dinoState == 1) { 
+        ssd1306_draw_string_adafruit(0, 35, 20, "SYSTEM MOKAD", WHITE, BLACK);
+        snprintf(scoreBuf, sizeof(scoreBuf), "SC: %04d", dinoScore);
+        ssd1306_draw_string_adafruit(0, 42, 35, scoreBuf, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 25, 52, "[OK] REBOOT", WHITE, BLACK);
+    }
+    // --- STATE 2: CYBER GLITCH ENDING ---
+    else if (dinoState == 2) { 
         endTimer++;
-        int walkX = 10;
-        if (endTimer < 50) walkX = 10 + (endTimer * 20 / 50);
-        else walkX = 30;
+        
+        // Dino jalan pelan ke tengah
+        int walkX = (endTimer < 60) ? 10 + (endTimer * 25 / 60) : 35;
+        oled_draw_bitmap(0, walkX, 36, dino_24_v1, 24, 24, WHITE);
+        
+        // Silhouette Cewek muncul di kanan
+        if (endTimer > 30) oled_draw_bitmap(0, 85, 36, dinoCewe_16, 16, 16, WHITE);
 
-        if (endTimer > 30) oled_draw_bitmap(0, 80, 32, dino_24, 24, 24, WHITE); // Ceweknya
-
-        oled_draw_bitmap(0, walkX, 32, dino_24, 24, 24, WHITE);
-
-        if (endTimer > 60 && endTimer < 110) oled_draw_bitmap(0, 55, 15, heart_16, 16, 16, WHITE);
-        else if (endTimer >= 110) {
-            oled_draw_bitmap(0, 55, 15, broken_16, 16, 16, WHITE);
-            ssd1306_draw_string_adafruit(0, 25, 0, "KITA TEMENAN", WHITE, BLACK);
-            ssd1306_draw_string_adafruit(0, 35, 10, "AJA YAA..", WHITE, BLACK);
+        if (endTimer > 80 && endTimer < 140) {
+            // Momen "Overload" (Layar getar dikit)
+            int shake = (rand() % 3) - 1;
+            ssd1306_draw_string_adafruit(0, 30 + shake, 15, "SIGNAL LOST", WHITE, BLACK);
+            
+            // Partikel rusak di sekitar mereka
+            for(int i=0; i<8; i++) {
+                ssd1306_draw_pixel(0, 60 + (rand()%20), 30 + (rand()%20), WHITE);
+            }
+        } 
+        else if (endTimer >= 140) {
+            // Cewek Glitch / Ngilang
+            ssd1306_draw_string_adafruit(0, 20, 10, "CONNECTION ERROR", WHITE, BLACK);
+            ssd1306_draw_string_adafruit(0, 25, 22, "AF_FECTION: 404", WHITE, BLACK);
+            
+            // Efek pixel berantakan di posisi cewek
+            for(int p=0; p<40; p++) {
+                ssd1306_draw_pixel(0, 85 + (rand()%16), 36 + (rand()%16), (millis()%2)); 
+            }
         }
-
-        if (endTimer > 160) {
-            ssd1306_draw_string_adafruit(0, 25, 55, "[OK] MOVE ON", WHITE, BLACK);
+        
+        // Tunggu bentar sebelum kasih tombol keluar
+        if (endTimer > 200) {
+            ssd1306_draw_string_adafruit(0, 30, 52, "[OK] MOVE ON", WHITE, BLACK);
         }
     }
 

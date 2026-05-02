@@ -151,21 +151,21 @@ static int retry_count = 0;
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data) {
-                                    
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } 
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (retry_count < 4) { // Kalo gagal, coba terus sampe 4 kali!
-            esp_wifi_connect();
+        // Cek dulu, ini emang gagal konek atau kita yang sengaja mutusin?
+        if (statusKoneksi == 0 && retry_count < 5) { 
             retry_count++;
-            printf("Gagal konek, nyoba lagi... (%d/4)\n", retry_count);
-        } else {
-            statusKoneksi = 2; // BENERAN GAGAL (Password Fix Salah)
-            isWiFiConnected = false;
-            printf("Mokad Cok! Password salah atau sinyal ampas.\n");
+            printf("Koneksi gagal, nyoba lagi... (%d/5)\n", retry_count);
+            esp_wifi_connect(); 
+        } else if (statusKoneksi != 3) { // 3 itu mode Disconnecting sengaja
+            statusKoneksi = 2; // FIX GAGAL
+            printf("Gagal Total! Cek Password lu Cok.\n");
         }
     } 
+
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         statusKoneksi = 1; // BERHASIL (Dapet IP)
@@ -229,30 +229,32 @@ esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_h
             }
             vTaskDelay(pdMS_TO_TICKS(50)); 
         } 
-        else if (triggerConnect) {
-            statusKoneksi = 0; // Set status lagi "Connecting..."
+                else if (triggerConnect) {
+            statusKoneksi = 0; // Set tampilan "Connecting..."
+            retry_count = 0;
             
-            retry_count = 0;   // Reset jumlah percobaan
+            // --- JURUS PEMBERSIH ---
+            esp_wifi_disconnect(); // Putusin yang lama
+            esp_wifi_stop();       // MATIIN TOTAL dulu biar gak "return error"
             
-            esp_wifi_disconnect(); // Putusin paksa koneksi yang nyangkut sebelumnya
-            
-            // WAJIB PAKE {0} BIAR MEMORI BERSIH DARI SAMPAH!
-            wifi_config_t wifi_config = {0}; 
-            
-            
+            wifi_config_t wifi_config = {0}; // Bersihin sampah memori
             strcpy((char*)wifi_config.sta.ssid, targetTerkunci.ssid);
             strcpy((char*)wifi_config.sta.password, inputPassword);
 
+            // Set mode dan config pas radio lagi mati
             esp_wifi_set_mode(WIFI_MODE_STA);
             esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
-            esp_wifi_start();
-            esp_wifi_connect();
             
-            // JANGAN langsung set statusKoneksi = 1 di sini!
-            // Kita biarin Event Handler yang ngerjain di bawah.
+            esp_wifi_start(); // Nyalain lagi mesinnya
+            
+            // Kasih delay dikit biar hardware siap
+            vTaskDelay(pdMS_TO_TICKS(100));
+            
+            esp_wifi_connect(); // BARU TEMBAK KONEK!
             
             triggerConnect = false; 
         }
+
 
 
 
