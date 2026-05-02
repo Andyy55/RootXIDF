@@ -112,15 +112,75 @@ long map(long x, long in_min, long in_max, long out_min, long out_max) {
 // ==========================================
 // DATA MENU 
 // ==========================================
-const unsigned char* iconListWiFi[] = { iconSmall_scan, iconSmall_sniff, iconSmall_conn, iconSmall_spam, iconSmall_wifi };
-const unsigned char* iconListBLE[]  = { iconSmall_scan, iconSmall_apple, iconSmall_android };
-const unsigned char* iconListIR[]   = { iconSmall_ir, iconSmall_tv, iconSmall_ac, iconSmall_lock, iconSmall_saved };
-const unsigned char* iconListSet[]  = { iconSmall_bright, iconSmall_wifi, iconSmall_info, iconSmall_repeat };
+const unsigned char* iconListWiFi[] = {
+iconSmall_scan,
+iconSmall_sniff,
+iconSmall_conn,
+iconSmall_spam,
+iconSmall_wifi
+};
 
-const char* subMenuWiFi[] = { "Scan WiFi", "List Scan", "Connected WiFi", "Beacon Spam", "RickRoll SSID" };
-const char* subMenuBLE[]  = { "BLE Scanner", "Spam Apple", "Spam Android" };
-const char* subMenuIR[]   = { "Read Signal", "TV B-Gone", "AC Remote", "Brute Force", "Saved Remotes" };
-const char* subMenuSet[]  = { "Brightness", "WiFi Setup", "About RootX", "Reboot" };
+const unsigned char* iconListBLE[]  = {
+iconSmall_scan,
+iconSmall_apple,
+iconSmall_android
+};
+
+const unsigned char* iconListIR[]   = {
+iconSmall_ir,
+iconSmall_tv,
+iconSmall_ac,
+iconSmall_lock,
+iconSmall_saved 
+};
+
+const unsigned char* iconListSet[]  = {
+iconSmall_bright,
+iconSmall_wifi,
+iconSmall_info,
+iconSmall_repeat 
+};
+
+const unsigned char* iconListGame[]  = {
+iconSmall_bright
+};
+
+
+
+
+
+const char* subMenuWiFi[] = { 
+"Scan WiFi", 
+"List Scan", 
+"Connected WiFi", 
+"Beacon Spam", 
+"RickRoll SSID"
+ };
+ 
+const char* subMenuBLE[]  = {
+"BLE Scanner",
+"Spam Apple",
+"Spam Android"
+ };
+ 
+const char* subMenuIR[]   = {
+"Read Signal",
+"TV B-Gone",
+"AC Remote",
+"Brute Force",
+"Saved Remotes"
+ };
+
+const char* subMenuSet[]  = {
+"Brightness",
+"WiFi Setup",
+"About RootX",
+"Reboot" 
+};
+
+const char* subMenuGame[] = {
+"Dinosaur Game"
+ };
 
 // ==========================================
 // LOGIKA TAMPILAN
@@ -134,7 +194,8 @@ void tampilkanMenuLogo() {
     if(currentMenu == 0)      ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: WIFI", WHITE, BLACK);
     else if(currentMenu == 1) ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: BLE", WHITE, BLACK);
     else if(currentMenu == 2) ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: IR", WHITE, BLACK);
-    else                      ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: SETS", WHITE, BLACK);
+    else if(currentMenu == 3) ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: SETS", WHITE, BLACK);
+    else                      ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: GAME", WHITE, BLACK);
     
     ssd1306_draw_hline(0, 0, 9, 128, WHITE);
 
@@ -142,7 +203,9 @@ void tampilkanMenuLogo() {
     if(currentMenu == 0)      bigIcon = logo_wifi_32; 
     else if(currentMenu == 1) bigIcon = logo_ble_32;
     else if(currentMenu == 2) bigIcon = logo_ir_32;
-    else                      bigIcon = logo_settings_32;
+    else if(currentMenu == 3) bigIcon = logo_settings_32;
+    else                      bigIcon = logo_game_32;
+    
 
     int iconBounce = getBounce(300, 2); // Loncat 2 pixel
     oled_draw_bitmap(0, 47, 20 + iconBounce, bigIcon, 32, 32, WHITE);
@@ -161,10 +224,11 @@ void tampilkanMenuUtama() {
     drawWave();
     int totalSub = 0; 
 
-    if(currentMenu == 0)      { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: WIFI", WHITE, BLACK); totalSub = 4; }
+    if(currentMenu == 0)      { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: WIFI", WHITE, BLACK); totalSub = 5; }
     else if(currentMenu == 1) { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: BLE ", WHITE, BLACK); totalSub = 3; }
     else if(currentMenu == 2) { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: IR", WHITE, BLACK);   totalSub = 5; }
-    else                      { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: SETS", WHITE, BLACK); totalSub = 4; }
+    else if(currentMenu == 3)  { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: SETS", WHITE, BLACK); totalSub = 4; }
+    else                      { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: GAME", WHITE, BLACK); totalSub = 1; }
     
     ssd1306_draw_hline(0, 0, 9, 128, WHITE);
 
@@ -204,7 +268,8 @@ void tampilkanMenuUtama() {
         if(currentMenu == 0)      iconSmall = iconListWiFi[itemIndex]; 
         else if(currentMenu == 1) iconSmall = iconListBLE[itemIndex];
         else if(currentMenu == 2) iconSmall = iconListIR[itemIndex];
-        else                      iconSmall = iconListSet[itemIndex]; 
+        else if(currentMenu == 3) iconSmall = iconListSet[itemIndex]; 
+        else iconSmall = iconListGame[itemIndex];
 
         // Gambar Icon (Kalo diselect dia ada iconBounce-nya, kalo ngga ya + 0)
         oled_draw_bitmap(0, 2, (yPos - 1) + iconBounce, iconSmall, 10, 10, textColor);
@@ -214,7 +279,8 @@ void tampilkanMenuUtama() {
         if(currentMenu == 0)      textToPrint = subMenuWiFi[itemIndex];
         else if(currentMenu == 1) textToPrint = subMenuBLE[itemIndex];
         else if(currentMenu == 2) textToPrint = subMenuIR[itemIndex];
-        else                      textToPrint = subMenuSet[itemIndex];
+        else if(currentMenu == 3) textToPrint = subMenuSet[itemIndex];
+        else textToPrint = subMenuGame[itemIndex];
 
         // Gambar Teks (Kalo diselect, text-nya ikutan goyang dikit biar asik)
         ssd1306_draw_string_adafruit(0, 18, yPos + iconBounce, (char*)textToPrint, textColor, bgColor);
@@ -796,5 +862,114 @@ void tampilkanSpamScreen(const char* judul, const char* subTeks) {
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 2, 55, "< STOP", BLACK, WHITE);
     }
+    ssd1306_refresh(0, true);
+}
+
+
+
+
+void renderDinoGame() {
+    ssd1306_clear(0);
+
+    // --- 1. RENDER FOOTER ---
+    ssd1306_draw_hline(0, 0, 52, 128, WHITE); // Garis Tanah/Footer
+    char footBuf[64];
+    snprintf(footBuf, sizeof(footBuf), "< BACK    %d/%d", dinoScore, dinoLimit);
+    ssd1306_draw_string_adafruit(0, 2, 55, footBuf, WHITE, BLACK);
+
+    // --- 2. STATE 0: GAMEPLAY ---
+    // --- 2. STATE 0: GAMEPLAY ---
+    if (dinoState == 0) {
+        // Fisika Gravitasi Smooth
+        dinoY += dinoVy;
+        if (isJumping) dinoVy += 1; 
+        
+        if (dinoY >= 27) { 
+            dinoY = 27;
+            isJumping = false;
+            dinoVy = 0;
+        }
+
+        // --- SISTEM AKSELERASI (MAKIN SKOR TINGGI, MAKIN NGEBUT) ---
+        // Tiap kelipatan 100 skor, kecepatan kaktus nambah 1
+        int currentSpeed = 3 + (dinoScore / 100); 
+        if (currentSpeed > 8) currentSpeed = 8; // Mentok di speed 8 biar gak teleport (nembus layar)
+
+        // Kaktus Jalan
+        cactusX -= currentSpeed; 
+        if (cactusX < -16) {
+            cactusX = 128 + (rand() % 40); 
+            dinoScore += 50; 
+        }
+
+        // Hitbox HD (Lebarnya disesuaikan sama speed biar gak nge-bug nembus)
+        if (cactusX > 0 && cactusX < (16 + currentSpeed) && dinoY > 15) {
+            dinoState = 1; // MODAR
+        }
+
+        if (dinoScore >= dinoLimit) {
+            dinoState = 2; // LIMIT TERCAPAI, WAKTUNYA DITOLAK
+            endTimer = 0;
+        }
+
+        // --- ANIMASI KAKI MAKIN CEPET ---
+        // Kecepatan normal 150ms. Makin gede skor, makin kecil delay-nya (makin cepet ganti frame)
+        int animSpeed = 150 - (dinoScore / 10);
+        if (animSpeed < 50) animSpeed = 50; // Mentok di 50ms biar kaki dino gak kram
+
+        const unsigned char* frameDino = dinoBiasa_16;
+        if (!isJumping) {
+            frameDino = ((millis() / animSpeed) % 2 == 0) ? dinoLari1_16 : dinoLari2_16;
+        }
+        
+        oled_draw_bitmap(0, 10, dinoY, frameDino, 16, 16, WHITE);
+        oled_draw_bitmap(0, cactusX, 27, kaktus_16, 16, 16, WHITE);
+
+    } 
+
+    // --- 3. STATE 1: MATI NABRAK ---
+    else if (dinoState == 1) {
+        oled_draw_bitmap(0, 10, dinoY, dinoBiasa_16, 16, 16, WHITE);
+        oled_draw_bitmap(0, cactusX, 27, kaktus_16, 16, 16, WHITE);
+        
+        ssd1306_draw_string_adafruit(0, 30, 5, "NABRAK COK!", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 20, 15, "Pencet OK", WHITE, BLACK);
+    } 
+    // --- 4. STATE 2: ENDING CINEMATIC SADBOY ---
+    else if (dinoState == 2) {
+        endTimer++;
+
+        // Dino cowok lari ke tengah layar
+        int walkX = 10;
+        if (endTimer < 50) walkX = 10 + (endTimer * 20 / 50);
+        else walkX = 30;
+
+        // Dino Cewek nunggu di kanan
+        if (endTimer > 30) oled_draw_bitmap(0, 80, 27, dinoCewe_16, 16, 16, WHITE);
+
+        // Animasi jalan dino cowok
+        const unsigned char* frameDino = ((millis() / 150) % 2 == 0) ? dinoLari1_16 : dinoLari2_16;
+        if (endTimer > 50) frameDino = dinoBiasa_16; 
+        oled_draw_bitmap(0, walkX, 27, frameDino, 16, 16, WHITE);
+
+        // Nembak pake Love
+        if (endTimer > 60 && endTimer < 110) {
+            oled_draw_bitmap(0, 55, 15, heart_16, 16, 16, WHITE);
+        }
+        // Ditolak mentah-mentah
+        else if (endTimer >= 110) {
+            oled_draw_bitmap(0, 55, 15, broken_16, 16, 16, WHITE);
+            ssd1306_draw_string_adafruit(0, 25, 0, "KITA TEMENAN", WHITE, BLACK);
+            ssd1306_draw_string_adafruit(0, 35, 10, "AJA YAA..", WHITE, BLACK);
+            
+            // Dino cowok nunduk sedih (Turun 2 pixel)
+            oled_draw_bitmap(0, walkX, 29, dinoBiasa_16, 16, 16, WHITE); 
+        }
+
+        if (endTimer > 160) {
+            ssd1306_draw_string_adafruit(0, 15, 35, "[OK] Move On", WHITE, BLACK);
+        }
+    }
+
     ssd1306_refresh(0, true);
 }

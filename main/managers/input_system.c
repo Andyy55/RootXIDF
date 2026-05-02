@@ -23,12 +23,25 @@ uint32_t input_millis() {
     return (uint32_t)(esp_timer_get_time() / 1000);
 }
 
+
+
+
+
+
+
 // Deklarasi fungsi di bawah
 void handleNavigasiScanner(int btn);
 void handleNavigasiDeauth(int btn);
 void handleNavigasiSpam(int btn);
 void handleNavigasiScanSta(int btn);
 void handleInputPassword(int btn);
+void handleDinoInput(int btn);
+
+
+
+
+
+
 
 void handleJoystick() {
     static uint32_t lastPress = 0;
@@ -50,6 +63,7 @@ void handleJoystick() {
     if (appMode == 4) { handleNavigasiSpam(btn);    lastPress = input_millis(); return; } 
      if (appMode == 5) { handleNavigasiScanSta(btn); lastPress = input_millis(); return; }
      if (appMode == 8) { handleInputPassword(btn); lastPress = input_millis(); return; }
+     if (appMode == 11) { handleDinoInput(btn); latPress = input_millis(); return; }
     
      
     if (appMode == 9) { // Misal appMode 11 itu Connected WiFi
@@ -90,6 +104,15 @@ lastPress = input_millis();
         return;
     }
 
+
+
+
+
+
+
+
+
+
     // --- BATAS TAMBAHAN MENU UTAMA ---
     if (!inSubMenu) {
         if (btn == BTN_RIGHT) {
@@ -113,7 +136,8 @@ lastPress = input_millis();
             if(currentMenu == 0)      limitMenu = 5; 
             else if(currentMenu == 1) limitMenu = 3;
             else if(currentMenu == 2) limitMenu = 5;
-            else                      limitMenu = 4;
+            else if(currentMenu == 3) limitMenu = 4;
+            else limitMenu = 1;
 
             if (currentSub < (limitMenu - 1)) { 
                 currentSub++;
@@ -153,20 +177,31 @@ lastPress = input_millis();
                 aktifModeSpam = 2; 
                 appMode = 4;
                 spamState = 0;
+            } else if (currentMenu == 4 && currentSub == 1) {
+                appMode = 11;
             }
             lastPress = input_millis();
         }
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ==========================================
 // LOGIKA NAVIGASI KHUSUS 
 // ==========================================
-
-
-
-
-
 
 
 void handleNavigasiScanner(int btn) {
@@ -377,5 +412,35 @@ void handleNavigasiSpam(int btn) {
             appMode = 0; 
             aktifModeSpam = 0;
         }
+    }
+}
+
+
+
+
+void handleDinoInput(int btn) {
+    if (dinoState == 0) {
+        if ((btn == BTN_OK || btn == BTN_UP) && !isJumping) {
+            dinoVy = -7; // Lompat HD yang smooth
+            isJumping = true;
+        }
+    } else {
+        if (btn == BTN_OK) { // Restart Game
+            dinoScore = 0;
+            cactusX = 128;
+            dinoY = 27;
+            dinoVy = 0;
+            isJumping = false;
+            dinoState = 0;
+            endTimer = 0;
+        }
+    }
+
+    // Tombol KIRI = Keluar Game kapan aja
+    if (btn == BTN_LEFT) {
+        appMode = 0; // Balik Menu Utama
+        dinoScore = 0;
+        cactusX = 128;
+        dinoState = 0;
     }
 }
