@@ -302,6 +302,9 @@ void loopWiFi(void * pvParameters) {
         nvs_flash_init();
         esp_netif_init();
         esp_event_loop_create_default();
+        
+        esp_netif_create_default_wifi_sta(); // Biar mode STA (Scan/Track) normal
+        esp_netif_create_default_wifi_ap();  // Biar mode AP punya DHCP Server & ngasih IP
         wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
         esp_wifi_init(&cfg);
         esp_wifi_set_storage(WIFI_STORAGE_RAM);
