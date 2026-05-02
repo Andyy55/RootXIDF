@@ -179,7 +179,7 @@ extern bool init_sdcard(); // Kasih tau compiler fungsinya ada di file lain
     1, 
     NULL, 
     1);
-}
+
 
     xTaskCreatePinnedToCore(
         loopWiFi,     /* Fungsi task (ada di wifi_system.c) */
