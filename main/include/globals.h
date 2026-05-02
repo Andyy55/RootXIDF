@@ -31,6 +31,17 @@ typedef struct {
 
 // --- EXTERN VARIABEL GLOBAL ---
 // --- EXTERN VARIABEL GLOBAL ---
+extern int dinoY;        
+extern int dinoVy;        
+extern bool isJumping;
+extern int cactusX;     
+extern int dinoScore;
+extern int dinoLimit;   
+extern int dinoState;     
+extern int endTimer;      
+
+
+
 extern bool isWiFiConnected;
 extern char connSSID[33];
 extern int connRSSI;
