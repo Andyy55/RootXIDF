@@ -456,10 +456,10 @@ void tampilkanWifiScanner() {
                         if (len > maxChar) strncpy(textShow, listWiFi[itemIdx].ssid, maxChar);
                         else               strcpy(textShow, listWiFi[itemIdx].ssid);
                     }
-                    ssd1306_draw_string_adafruit(0, 18, yPos + 1, textShow, textColor, bgColor);
+                    ssd1306_draw_string_adafruit(0, 16, yPos + 1, textShow, textColor, bgColor);
 
                     snprintf(buf, sizeof(buf), "C:%d", listWiFi[itemIdx].channel);
-                    ssd1306_draw_string_adafruit(0, 65, yPos + 1, buf, textColor, bgColor);
+                    ssd1306_draw_string_adafruit(0, 66, yPos + 1, buf, textColor, bgColor);
                     snprintf(buf, sizeof(buf), "%ddB", listWiFi[itemIdx].rssi);
                     ssd1306_draw_string_adafruit(0, 95, yPos + 1, buf, textColor, bgColor);
                 }
@@ -827,13 +827,22 @@ void tampilkanBrightness() {
 }
 
 void setOledBrightness(uint8_t level) {
-    // Biarin kosong dulu, belum prioritas
-i2c_write(0x3C << 1); // Alamat OLED (0x3C) + Write bit
-    i2c_write(0x00);      // 0x00 artinya byte selanjutnya adalah COMMAND
-    i2c_write(0x81);      // Register Kontras (Brightness)
-    i2c_write(level);     // Nilai dari lu (0-255)
-    i2c_stop();
+    // Kita pake i2c_cmd_link biar komunikasinya resmi (Standard ESP-IDF)
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    
+    // Alamat OLED biasanya 0x3C
+    i2c_master_write_byte(cmd, (0x3C << 1) | I2C_MASTER_WRITE, true);
+    
+    i2c_master_write_byte(cmd, 0x00, true); // Control byte: Berikutnya adalah COMMAND
+    i2c_master_write_byte(cmd, 0x81, true); // Perintah Contrast Control
+    i2c_master_write_byte(cmd, level, true); // Nilai brightness (0-255)
+    
+    i2c_master_stop(cmd);
+    i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(10)); // Kirim!
+    i2c_cmd_link_delete(cmd);
 }
+
 
 void tampilkanSpamScreen(const char* judul, const char* subTeks) {
     ssd1306_clear(0);

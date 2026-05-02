@@ -83,7 +83,7 @@ lastPress = input_millis();
         if (btn == BTN_LEFT) { 
             esp_wifi_stop(); 
             isDeauthSta = false;
-            appMode = 1; 
+            appMode = 5; 
     }
     lastPress = input_millis();
         return;
@@ -116,11 +116,11 @@ lastPress = input_millis();
     // --- BATAS TAMBAHAN MENU UTAMA ---
     if (!inSubMenu) {
         if (btn == BTN_RIGHT) {
-            currentMenu = (currentMenu + 1) % 4; 
+            currentMenu = (currentMenu + 1) % 5; 
             lastPress = input_millis();
         }
         else if (btn == BTN_LEFT) {
-            currentMenu = (currentMenu - 1 + 4) % 4; 
+            currentMenu = (currentMenu - 1 + 5) % 5; 
             lastPress = input_millis();
         }
         else if (btn == BTN_OK) {
