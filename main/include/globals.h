@@ -29,18 +29,33 @@ typedef struct {
     int paket_count;
 } StationInfo;
 
+
+// --- VARIABEL ENGINE GAME ---
+extern int baca_highscore_dino();
+extern void simpan_highscore_dino(int hs);
+
+
 // --- EXTERN VARIABEL GLOBAL ---
 // --- EXTERN VARIABEL GLOBAL ---
-extern int dinoY;        
-extern int dinoVy;        
-extern bool isJumping;
-extern int cactusX;     
-extern int dinoScore;
+
+
 extern int dinoLimit;   
-extern int dinoState;     
-extern int endTimer;      
 
 
+
+extern float rawScore;
+extern int dinoScore, dinoHighScore;
+extern int dinoY;        // Posisi tanah baru buat Dino 24px
+extern float dinoVy;      
+extern bool isJumping;
+extern int obstacleX, obstacleY, obstacleType; // 0=Kaktus1, 1=Kaktus2, 2=Burung
+extern float gameSpeed; 
+extern int dinoState, endTimer;      
+extern int skyX; // Posisi matahari/bulan
+
+// Posisi Bintang (Latar Belakang)
+extern int starX[5];
+extern int starY[5];
 
 extern bool isWiFiConnected;
 extern char connSSID[33];
