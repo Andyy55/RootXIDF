@@ -26,6 +26,7 @@ extern void tampilkanBrightness(void);
 extern void tampilkanInputPassword(void);
 extern void tampilkanConnectedWiFi(void);
 extern void tampilkanStatusKoneksi(void);
+extern void renderDinoGame(void);
 extern void tampilkanSpamScreen(const char* judul, const char* subTeks);
 extern void loopWiFi(void *pvParameters);
 
