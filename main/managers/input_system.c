@@ -63,7 +63,7 @@ void handleJoystick() {
     if (appMode == 4) { handleNavigasiSpam(btn);    lastPress = input_millis(); return; } 
      if (appMode == 5) { handleNavigasiScanSta(btn); lastPress = input_millis(); return; }
      if (appMode == 8) { handleInputPassword(btn); lastPress = input_millis(); return; }
-     if (appMode == 11) { handleDinoInput(btn); latPress = input_millis(); return; }
+     if (appMode == 11) { handleDinoInput(btn); lastPress = input_millis(); return; }
     
      
     if (appMode == 9) { // Misal appMode 11 itu Connected WiFi
