@@ -6,6 +6,7 @@
 #include "globals.h"
 #include "esp_wifi.h"
 #include <string.h>
+#include "ssd1306.h"
 
 // Pengganti String biar enteng dan cepat!
 #define BTN_NONE  0
