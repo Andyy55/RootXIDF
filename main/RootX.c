@@ -45,6 +45,25 @@ bool triggerTrack = false;
 
 // Di dalam while(1)
 // --- VARIABEL KONEKSI WIFI (BIAR LINKER GAK NGAMUK) ---
+// --- VARIABEL ENGINE GAME ---
+extern int baca_highscore_dino();
+extern void simpan_highscore_dino(int hs);
+
+float rawScore = 0;
+int dinoScore = 0, dinoHighScore = -1;
+int dinoY = 32;        // Posisi tanah baru buat Dino 24px
+float dinoVy = 0;      
+bool isJumping = false;
+int obstacleX = 128, obstacleY = 32, obstacleType = 0; // 0=Kaktus1, 1=Kaktus2, 2=Burung
+float gameSpeed = 3.0; 
+int dinoState = 0, endTimer = 0;      
+int skyX = 128; // Posisi matahari/bulan
+
+// Posisi Bintang (Latar Belakang)
+int starX[5] = {20, 50, 80, 100, 120};
+int starY[5] = {5, 15, 10, 20, 8};
+
+
 char inputPassword[64] = {0};
 int cursorPass = 0;
 int statusKoneksi = 0;
@@ -56,14 +75,8 @@ bool triggerConnect = false;
 bool triggerDisconnect = false;
 
 
-int dinoY = 27;        // Sekarang nyentuh tanahnya di Y=27 karena sprite 16px
-int dinoVy = 0;        
-bool isJumping = false;
-int cactusX = 128;     
-int dinoScore = 0;
+
 int dinoLimit = 500;   
-int dinoState = 0;     
-int endTimer = 0;      
 
 int deauthProgress = 0;
 bool adaTargetSta = false;
