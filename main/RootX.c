@@ -11,22 +11,9 @@
 #include "ssd1306.h"  // Sesuaikan sama nama file dari library OLED lu
 
 // --- DEKLARASI FUNGSI DARI MANAGER LAIN ---
-extern void handleJoystick(void);
-extern void tampilkanLogoDulu(void);
-extern void tampilkanIntroAnime(void);
-extern void tampilkanTeksSplash(void);
-extern void tampilkanMenuLogo(void);
-extern void tampilkanMenuUtama(void);
-extern void tampilkanWifiScanner(void);
-extern void tampilkanTrackScreen(void);
-extern void tampilkanStationScanner(void); 
-extern void tampilkanDeauthScreen(void);
-extern void tampilkandeauthsta(void);
-extern void tampilkanBrightness(void);
-extern void tampilkanEvilTwinScreen(void);
-extern void renderDinoGame(void);
-extern void tampilkanSpamScreen(const char* judul, const char* subTeks);
+
 extern void loopWiFi(void *pvParameters);
+extern void task_display(void *pvParameters);
 
 
 // ==========================================
@@ -171,14 +158,7 @@ extern bool init_sdcard(); // Kasih tau compiler fungsinya ada di file lain
  
  
     // Jalankan Layar di Core 1 (Biar animasi Dino & Starfield gak nge-lag)
-    xTaskCreatePinnedToCore(
-    task_display, 
-    "DisplayTask", 
-    16384, 
-    NULL, 
-    1, 
-    NULL, 
-    1);
+   
 
 
     xTaskCreatePinnedToCore(
@@ -190,41 +170,17 @@ extern bool init_sdcard(); // Kasih tau compiler fungsinya ada di file lain
         &TaskWiFi,    /* Handle */
         0             /* Core 0 */
     );
+    xTaskCreatePinnedToCore(
+    task_display,    // Nama fungsinya
+    "DisplayTask",   // Nama bebas buat debug
+    16384,            // Ukuran memori (8KB cukup kok)
+    NULL,            // Gak ada parameter tambahan
+    1,               // Prioritas (rendah aja gapapa)
+    NULL,            // Gak butuh handle
+    1                // <--- INI KUNCINYA (1 berarti Core 1)
+);
+
 
     // 5. Pengganti loop()
-    while (1) {
-        handleJoystick(); // Cek input
 
-        if (appMode == 0) {
-            if (inSubMenu == false) tampilkanMenuLogo();
-            else tampilkanMenuUtama();
-        } 
-        else if (appMode == 1) {
-            tampilkanWifiScanner(); 
-        } 
-        else if (appMode == 2) {
-            tampilkanDeauthScreen(); 
-        } 
-        else if (appMode == 3) { 
-            tampilkanBrightness();
-        } 
-        else if (appMode == 4) {
-            if (aktifModeSpam == 1) tampilkanSpamScreen("BEACON SPAM", "Start Spam?");
-            else if (aktifModeSpam == 2) tampilkanSpamScreen("RICKROLL", "Start Spam?");
-        } else if (appMode == 5) { 
-            tampilkanStationScanner();
-        } else if (appMode == 6) { // Kita kasih mode 6 buat Track
-    tampilkanTrackScreen();
-} else if (appMode == 7) {
-tampilkandeauthsta();
-} else if (appMode == 8) {
-tampilkanEvilTwinScreen();
-} else if (appMode == 11) {
-renderDinoGame();
-}
-
-
-        // Delay wajib FreeRTOS biar Core 1 gak crash (Watchdog Timeout)
-        vTaskDelay(pdMS_TO_TICKS(20)); 
-    }
 }
