@@ -8,13 +8,15 @@
 #include "ssd1306.h"
 #include "i2c.h"
 #include <math.h>
+#include "driver/gpio.h"
+#include "esp_log.h"
 
 
 #define WHITE 1
 #define BLACK 0
 #define MAX_STARS 15
 
-extern tampilkanMenuLogo(void);
+extern void tampilkanMenuLogo(void);
 extern void tampilkanMenuUtama(void);
 extern void handleJoystick(void);
 
@@ -23,7 +25,8 @@ void tampilkanMenuUtama(void);
 void tampilkanWifiScan(void);
 void tampilkanDeauthScreen(void);
 void tampilkanBrightness(void);
-void tampilkanSpamScreen(void);
+void tampilkanSpamScreen(const char* judul, const char* subTeks);
+
 void tampilkanStationScanner(void);
 void tampilkanTrackScreen(void);
 void tampilkandeauthsta(void);
