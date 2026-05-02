@@ -565,7 +565,7 @@ else if (isEvilTwin) {
         
 
         // --- MANAJEMEN RADIO WIFI (BIAR GAK PANAS) ---
-        if (!isSpamming && !isDeauthSta && !isDeauthing && !triggerScan) {
+        if (!isSpamming && !isDeauthSta && !isDeauthing && !triggerScan && !isEvilTwin && !triggerEvilTwin) {
             wifi_mode_t currentMode;
             esp_wifi_get_mode(&currentMode);
 

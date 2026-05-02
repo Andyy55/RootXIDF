@@ -379,8 +379,12 @@ void handleEvilTwinInput(int btn) {
             isEvilTwin = false;
             esp_wifi_stop();
             appMode = 1;
-        }
-    }
+        } 
+    } else if (evilTwinState == 1) { if (btn == BTN_LEFT) {
+            appMode = 1; // Balik ke menu scanner
+            isEvilTwin = false;
+            esp_wifi_stop();
+        }}
 }
 
 

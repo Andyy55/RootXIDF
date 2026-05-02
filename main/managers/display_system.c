@@ -992,15 +992,23 @@ void tampilkanEvilTwinScreen() {
     drawStarfield();
     
     if (evilTwinState == 0) {
-        ssd1306_draw_string_adafruit(0, 10, 10, "START EVIL TWIN?", WHITE, BLACK);
+    ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 1, "EVIL TWIN", BLACK, WHITE);
+        
+        ssd1306_draw_string_adafruit(0, 10, 25, "Start Evil Twin?", WHITE, BLACK);
+
+     
+        
         ssd1306_draw_string_adafruit(0, 10, 25, targetTerkunci.ssid, WHITE, BLACK);
-        ssd1306_draw_string_adafruit(0, 5, 55, "< NO", BLACK, WHITE);
+        ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 55, "< NO", BLACK, WHITE);
         ssd1306_draw_string_adafruit(0, 95, 55, "YES >", BLACK, WHITE);
     } 
     else if (evilTwinState == 1) {
         ssd1306_draw_string_adafruit(0, 15, 20, "WAITING FOR DATA...", WHITE, BLACK);
         int bounce = (millis() / 200) % 5;
         ssd1306_draw_string_adafruit(0, 50, 40 + bounce, "...", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 2, 55, "< NO", WHITE, BLACK);
     }
     else if (evilTwinState == 2) {
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
