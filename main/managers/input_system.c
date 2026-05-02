@@ -35,7 +35,7 @@ void handleNavigasiScanner(int btn);
 void handleNavigasiDeauth(int btn);
 void handleNavigasiSpam(int btn);
 void handleNavigasiScanSta(int btn);
-void handleInputPassword(int btn);
+void handleEvilTwinInput(int btn);
 void handleDinoInput(int btn);
 
 
@@ -64,18 +64,11 @@ void handleJoystick() {
     if (appMode == 2) { handleNavigasiDeauth(btn);  lastPress = input_millis(); return; }
     if (appMode == 4) { handleNavigasiSpam(btn);    lastPress = input_millis(); return; } 
      if (appMode == 5) { handleNavigasiScanSta(btn); lastPress = input_millis(); return; }
-     if (appMode == 8) { handleInputPassword(btn); lastPress = input_millis(); return; }
+     if (appMode == 8) { handleEvilTwinInput(btn); lastPress = input_millis(); return; }
      if (appMode == 11) { handleDinoInput(btn); lastPress = input_millis(); return; }
     
      
-    if (appMode == 9) { // Misal appMode 11 itu Connected WiFi
-    if (btn == BTN_LEFT) appMode = 0; // Back ke menu utama
-    if (btn == BTN_RIGHT && isWiFiConnected) {
-        triggerDisconnect = true; // Putusin WiFi
-    }
-    lastPress = input_millis();
-        return;
-}
+
      if (appMode == 6) {
 if (btn == BTN_LEFT) { scannerState = 4;  appMode = 1; triggerTrack = false; }
 lastPress = input_millis();
@@ -137,7 +130,7 @@ lastPress = input_millis();
     else {
         if (btn == BTN_DOWN) {
             int limitMenu = 0; 
-            if(currentMenu == 0)      limitMenu = 5; 
+            if(currentMenu == 0)      limitMenu = 4; 
             else if(currentMenu == 1) limitMenu = 3;
             else if(currentMenu == 2) limitMenu = 5;
             else if(currentMenu == 3) limitMenu = 4;
@@ -172,12 +165,10 @@ lastPress = input_millis();
             } else if (currentMenu == 3 && currentSub == 0) { 
                 appMode = 3; 
             } else if (currentMenu == 0 && currentSub == 2) {
-                appMode = 9;
-            } else if (currentMenu == 0 && currentSub == 3) {
                 aktifModeSpam = 1; 
                 appMode = 4;       
                 spamState = 0;
-            } else if (currentMenu == 0 && currentSub == 4) {
+            } else if (currentMenu == 0 && currentSub == 3) {
                 aktifModeSpam = 2; 
                 appMode = 4;
                 spamState = 0;
@@ -261,12 +252,7 @@ void handleNavigasiScanner(int btn) {
         else if (btn == BTN_OK) {
         if (contextCursor == 0) { appMode = 2; deauthState = 0; } 
         else if (contextCursor == 1) {
-        if (targetTerkunci.is_open) { 
-            triggerConnect = true; 
-            inputPassword[0] = '\0'; // Kosongin pass
-        } else {
-            appMode = 8; // Pindah ke screen input password (roller)
-        }
+           appMode = 8
         }
         else if (contextCursor == 2) { appMode = 5; scannerStateSta = 0; contextCursor = 0; }
         else if (contextCursor == 3) { // TRACK
@@ -354,70 +340,6 @@ void handleNavigasiDeauth(int btn) {
 }
 
 // --- TARUH INI DI LUAR FUNGSI (Di atas handleInputPassword) ---
-int kbX = 0;
-int kbY = 0;
-int kbPage = 0; // 0 = Huruf Kecil, 1 = Huruf Gede/Simbol
-
-// Layout QWERTY Mini (4 Baris x 10 Kolom)
-const char kbLayout[2][4][10] = {
-    { // PAGE 0: Huruf Kecil & Angka
-        {'1','2','3','4','5','6','7','8','9','0'},
-        {'q','w','e','r','t','y','u','i','o','p'},
-        {'a','s','d','f','g','h','j','k','l','@'},
-        {'z','x','c','v','b','n','m','<','*','>'}
-    },
-    { // PAGE 1: Huruf Gede & Simbol
-        {'!','#','$','%','&','-','+','(',')','='},
-        {'Q','W','E','R','T','Y','U','I','O','P'},
-        {'A','S','D','F','G','H','J','K','L','_'},
-        {'Z','X','C','V','B','N','M','<','*','>'}
-    }
-};
-
-// --- GANTI FUNGSI INI FULL ---
-void handleInputPassword(int btn) {
-    if (btn == BTN_UP) {
-        kbY--; if(kbY < 0) kbY = 3; // Teleport ke bawah
-    } 
-    else if (btn == BTN_DOWN) {
-        kbY++; if(kbY > 3) kbY = 0; // Teleport ke atas
-    } 
-    else if (btn == BTN_LEFT) {
-        kbX--; if(kbX < 0) kbX = 9; // Teleport ke kanan
-    } 
-    else if (btn == BTN_RIGHT) {
-        kbX++; if(kbX > 9) kbX = 0; // Teleport ke kiri
-    } 
-    else if (btn == BTN_OK) {
-        char selected = kbLayout[kbPage][kbY][kbX];
-        int len = strlen(inputPassword);
-        
-        if (selected == '<') { 
-            // TOMBOL BACKSPACE (Hapus 1 huruf)
-            if(len > 0) inputPassword[len - 1] = '\0';
-            else appMode = 1; // Kalo udah kosong dipencet backspace, balik ke menu
-        } 
-        else if (selected == '*') { 
-            // TOMBOL SHIFT (Ganti halaman keyboard)
-            kbPage = !kbPage; 
-        }
-        else if (selected == '>') { 
-            // TOMBOL CONNECT (ENTER)
-            if (len >= 8) {
-                triggerConnect = true;
-                appMode = 10; // Pindah ke layar Connecting
-            }
-        }
-        else { 
-            // NGETIK HURUF
-            if (len < 63) {
-                inputPassword[len] = selected;
-                inputPassword[len + 1] = '\0';
-            }
-        }
-    }
-}
-
 
 
 void handleNavigasiSpam(int btn) {
@@ -444,6 +366,21 @@ void handleNavigasiSpam(int btn) {
 }
 
 
+void handleEvilTwinInput(int btn) {
+    if (evilTwinState == 0) {
+        if (btn == BTN_RIGHT || btn == BTN_OK) {
+            startEvilTwin(); // Jalankan mesinnya!
+        } else if (btn == BTN_LEFT) {
+            appMode = 1; // Balik ke menu scanner
+        }
+    } else if (evilTwinState == 2) {
+        if (btn == BTN_LEFT || btn == BTN_OK) {
+            isEvilTwin = false;
+            esp_wifi_stop();
+            appMode = 1;
+        }
+    }
+}
 
 
 void handleDinoInput(int btn) {

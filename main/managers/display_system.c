@@ -153,7 +153,6 @@ iconSmall_bright
 const char* subMenuWiFi[] = { 
 "Scan WiFi", 
 "List Scan", 
-"Connected WiFi", 
 "Beacon Spam", 
 "RickRoll SSID"
  };
@@ -225,7 +224,7 @@ void tampilkanMenuUtama() {
     drawWave();
     int totalSub = 0; 
 
-    if(currentMenu == 0)      { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: WIFI", WHITE, BLACK); totalSub = 5; }
+    if(currentMenu == 0)      { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: WIFI", WHITE, BLACK); totalSub = 4; }
     else if(currentMenu == 1) { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: BLE ", WHITE, BLACK); totalSub = 3; }
     else if(currentMenu == 2) { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: IR", WHITE, BLACK);   totalSub = 5; }
     else if(currentMenu == 3)  { ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: SETS", WHITE, BLACK); totalSub = 4; }
@@ -293,102 +292,6 @@ void tampilkanMenuUtama() {
 }
 
 // --- TARUH INI DI ATAS FUNGSI ---
-extern int kbX;
-extern int kbY;
-extern int kbPage;
-extern const char kbLayout[2][4][10];
-
-// --- GANTI FUNGSI INI FULL ---
-void tampilkanInputPassword() {
-    ssd1306_clear(0);
-    
-    // 1. Gambar Kotak Teks di Atas
-    ssd1306_draw_rectangle(0, 0, 0, 128, 14, WHITE);
-    
-    // Trik Biar Teks Gak Nabrak (Nampilin 18 karakter terakhir doang)
-    int len = strlen(inputPassword);
-    char* textToPrint = inputPassword;
-    if (len > 18) textToPrint = inputPassword + (len - 18);
-    ssd1306_draw_string_adafruit(0, 3, 3, textToPrint, WHITE, BLACK);
-    
-    // Kursor Teks (Kedip-kedip di sebelah huruf terakhir)
-    int cursorTeks = 3 + (strlen(textToPrint) * 6);
-    if ((millis() / 300) % 2 == 0) {
-        ssd1306_fill_rectangle(0, cursorTeks, 4, 6, 8, WHITE);
-    }
-
-    // 2. Gambar Grid Keyboard QWERTY
-    for (int r = 0; r < 4; r++) {
-        for (int c = 0; c < 10; c++) {
-            char ch[2] = { kbLayout[kbPage][r][c], '\0' };
-            
-            // Hitung kordinat X dan Y per huruf
-            int xPos = 4 + (c * 12); 
-            int yPos = 18 + (r * 11);
-            
-            // Ubah simbol sistem jadi teks ikon biar paham
-            const char* label = ch;
-            if (ch[0] == '<') label = "<";      // Ikon Backspace
-            else if (ch[0] == '*') label = "^"; // Ikon Shift/Page
-            else if (ch[0] == '>') label = "OK"; // Ikon Enter/Connect
-
-            // Kalo huruf ini lagi disorot (ditunjuk joystick)
-            if (r == kbY && c == kbX) {
-                // Kasih blok putih, hurufnya jadi hitam (Inverse)
-                ssd1306_fill_rectangle(0, xPos - 1, yPos - 1, 11, 10, WHITE);
-                ssd1306_draw_string_adafruit(0, xPos, yPos, (char*)label, BLACK, WHITE);
-            } else {
-                // Huruf biasa
-                ssd1306_draw_string_adafruit(0, xPos, yPos, (char*)label, WHITE, BLACK);
-            }
-        }
-    }
-    
-    ssd1306_refresh(0, true);
-}
-
-void tampilkanStatusKoneksi() {
-    ssd1306_clear(0);
-    drawWave(); // Kasih animasi wave biar keren
-
-    // Header tetep blok putih
-    ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-    ssd1306_draw_string_adafruit(0, 30, 1, "WIFI STATUS", BLACK, WHITE);
-
-    if (statusKoneksi == 0) {
-        // TAMPILAN LAGI PROSES
-        int bounce = getBounce(200, 3);
-        oled_draw_bitmap(0, 54, 20 + bounce, iconSmall_wifi, 10, 10, WHITE);
-        ssd1306_draw_string_adafruit(0, 30, 40, "CONNECTING...", WHITE, BLACK);
-        drawLoadingBar(24, 52, 80, 6, (millis() / 20) % 100);
-    } 
-    else if (statusKoneksi == 1) {
-        // TAMPILAN BERHASIL
-        ssd1306_draw_string_adafruit(0, 35, 25, "CONNECTED!", WHITE, BLACK);
-        ssd1306_draw_string_adafruit(0, 20, 35, targetTerkunci.ssid, WHITE, BLACK);
-        // Icon Ceklis (pake icon info aja kalo gada)
-        oled_draw_bitmap(0, 59, 45, iconSmall_info, 10, 10, WHITE);
-    } 
-    else if (statusKoneksi == 2) {
-        // TAMPILAN GAGAL
-        ssd1306_draw_string_adafruit(0, 40, 25, "FAILED!", WHITE, BLACK);
-        ssd1306_draw_string_adafruit(0, 15, 35, "Wrong Password?", WHITE, BLACK);
-        oled_draw_bitmap(0, 59, 45, iconSmall_skull, 10, 10, WHITE);
-    } else if (statusKoneksi == 3) {
-        // --- TAMPILAN DISCONNECTING ---
-        ssd1306_draw_string_adafruit(0, 25, 25, "DISCONNECTING...", WHITE, BLACK);
-        drawLoadingBar(24, 40, 80, 6, (millis() / 15) % 100);
-    }
-    else if (statusKoneksi == 4) {
-        // --- TAMPILAN DISCONNECTED (BERHASIL CABUT) ---
-        ssd1306_draw_string_adafruit(0, 22, 30, "DISCONNECTED!", WHITE, BLACK);
-        oled_draw_bitmap(0, 59, 45, iconSmall_saved, 10, 10, WHITE); 
-        // Pake icon saved atau centang biar keliatan sukses cabut
-    }
-
-    ssd1306_refresh(0, true);
-}
-
 
 
 void tampilkanTrackScreen() {
@@ -591,38 +494,6 @@ void tampilkanWifiScanner() {
 }
 
 
-void tampilkanConnectedWiFi() {
-    ssd1306_clear(0);
-    
-    // HEADER BLOK
-    ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-    ssd1306_draw_string_adafruit(0, 22, 1, "CONNECTED INFO", BLACK, WHITE);
-
-    if (!isWiFiConnected) {
-        ssd1306_draw_string_adafruit(0, 15, 30, "BELUM KONEK WIFI", WHITE, BLACK);
-        
-        // FOOTER BACK
-        ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
-        ssd1306_draw_string_adafruit(0, 5, 55, "< BACK", BLACK, WHITE);
-    } else {
-        // Tampilkan Detail
-        char buf[64];
-        snprintf(buf, sizeof(buf), "SSID: %s", connSSID);
-        ssd1306_draw_string_adafruit(0, 5, 15, buf, WHITE, BLACK);
-        
-        snprintf(buf, sizeof(buf), "CH  : %d", connCH);
-        ssd1306_draw_string_adafruit(0, 5, 25, buf, WHITE, BLACK);
-        
-        snprintf(buf, sizeof(buf), "RSSI: %d dBm", connRSSI);
-        ssd1306_draw_string_adafruit(0, 5, 35, buf, WHITE, BLACK);
-
-        // FOOTER BACK & DISC
-        ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
-        ssd1306_draw_string_adafruit(0, 5, 55, "< BACK", BLACK, WHITE);
-        ssd1306_draw_string_adafruit(0, 95, 55, "DISC >", BLACK, WHITE);
-    }
-    ssd1306_refresh(0, true);
-}
 
 
 void tampilkanStationScanner() {
@@ -714,7 +585,7 @@ void tampilkanStationScanner() {
         ssd1306_fill_rectangle(0, 0, 24, 128, 16, WHITE);
 
         // --- 3. LOGIKA ROLLING MENU ---
-        for(int i = 0; i < 4; i++) {
+        for(int i = 0; i < 2; i++) {
             const char* teks;
             const unsigned char* icon;
             
@@ -948,20 +819,36 @@ void renderDinoGame() {
         }
 
         // --- SISTEM MUSUH ---
+                // --- SISTEM MUSUH (Logika Pergerakan) ---
         obstacleX -= (int)gameSpeed;
         if (obstacleX < -24) {
             obstacleX = 128 + (rand() % 40);
             obstacleType = rand() % 3; 
             
             if (obstacleType == 2) {
-                // BURUNG: Cuma 2 posisi biar gak nanggung
-                // 15 = Tinggi (Dino diem aja selamet), 32 = Rendah (Dino wajib loncat)
                 int heights[] = {15, 32}; 
                 obstacleY = heights[rand() % 2];
             } else {
                 obstacleY = (obstacleType == 0) ? 44 : 38;
             }
         }
+
+        // --- TAMBAHKAN KODE INI UNTUK MENGGAMBAR MUSUH ---
+        if (obstacleType == 0) {
+            // Kaktus Kecil (16x16)
+            oled_draw_bitmap(0, (int)obstacleX, 44, kaktus_16, 16, 16, WHITE);
+        } 
+        else if (obstacleType == 1) {
+            // Kaktus Besar/Triple
+            // Note: kaktus_besar di datamu lebarnya 24px (3 byte per baris)
+            oled_draw_bitmap(0, (int)obstacleX, 38, kaktus_besar, 24, 24, WHITE);
+        } 
+        else if (obstacleType == 2) {
+            // Burung (Ptero) - Animasi ngepak sayap
+            const unsigned char* pteroFrame = ((millis() / 200) % 2 == 0) ? ptero_up : ptero_down;
+            oled_draw_bitmap(0, (int)obstacleX, obstacleY, pteroFrame, 16, 16, WHITE);
+        }
+
 
         // --- DRAW GROUND ---
         // --- DRAW GROUND (TANAH DINAMIS) ---
@@ -1006,8 +893,34 @@ void renderDinoGame() {
         }
     } 
     else { // GAME OVER
-        ssd1306_draw_string_adafruit(0, 35, 25, "G A M E  O V E R", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 20, 25, "G A M E  O V E R", WHITE, BLACK);
         ssd1306_draw_string_adafruit(0, 28, 50, "[OK] RESTART", WHITE, BLACK);
+    }
+    ssd1306_refresh(0, true);
+}
+
+void tampilkanEvilTwinScreen() {
+    ssd1306_clear(0);
+    drawStarfield();
+    
+    if (evilTwinState == 0) {
+        ssd1306_draw_string_adafruit(0, 10, 10, "START EVIL TWIN?", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 10, 25, targetTerkunci.ssid, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 5, 55, "< NO", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 95, 55, "YES >", BLACK, WHITE);
+    } 
+    else if (evilTwinState == 1) {
+        ssd1306_draw_string_adafruit(0, 15, 20, "WAITING FOR DATA...", WHITE, BLACK);
+        int bounce = (millis() / 200) % 5;
+        ssd1306_draw_string_adafruit(0, 50, 40 + bounce, "...", WHITE, BLACK);
+    }
+    else if (evilTwinState == 2) {
+        ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 20, 1, "PW EXPLOITED!", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 5, 25, "Target:", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 50, 25, targetTerkunci.ssid, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 5, 40, "Pass  :", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 50, 40, stolenPassword, WHITE, BLACK);
     }
     ssd1306_refresh(0, true);
 }
