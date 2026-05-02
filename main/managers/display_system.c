@@ -291,31 +291,57 @@ void tampilkanMenuUtama() {
     ssd1306_refresh(0, true);
 }
 
+// --- TARUH INI DI ATAS FUNGSI ---
+extern int kbX;
+extern int kbY;
+extern int kbPage;
+extern const char kbLayout[2][4][10];
+
+// --- GANTI FUNGSI INI FULL ---
 void tampilkanInputPassword() {
     ssd1306_clear(0);
-    ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
-    ssd1306_draw_string_adafruit(0, 5, 1, "ENTER PASSWORD", BLACK, WHITE);
-
-    // Tampilan SSID Target di bawah Header
-    char targetBuf[64];
-    snprintf(targetBuf, sizeof(targetBuf), "Target: %s", targetTerkunci.ssid);
-    ssd1306_draw_string_adafruit(0, 5, 15, targetBuf, WHITE, BLACK);
-
-    // --- KOTAK INPUT ---
-    ssd1306_draw_rectangle(0, 4, 30, 120, 15, WHITE);
     
-    // Tampilkan password yang udah diketik
-    ssd1306_draw_string_adafruit(0, 10, 34, inputPassword, WHITE, BLACK);
-
-    // --- KURSOR KEDAP-KEDIP ---
+    // 1. Gambar Kotak Teks di Atas
+    ssd1306_draw_rectangle(0, 0, 0, 128, 14, WHITE);
+    
+    // Trik Biar Teks Gak Nabrak (Nampilin 18 karakter terakhir doang)
+    int len = strlen(inputPassword);
+    char* textToPrint = inputPassword;
+    if (len > 18) textToPrint = inputPassword + (len - 18);
+    ssd1306_draw_string_adafruit(0, 3, 3, textToPrint, WHITE, BLACK);
+    
+    // Kursor Teks (Kedip-kedip di sebelah huruf terakhir)
+    int cursorTeks = 3 + (strlen(textToPrint) * 6);
     if ((millis() / 300) % 2 == 0) {
-        int cursorX = 10 + (cursorPass * 6);
-        ssd1306_draw_hline(0, cursorX, 43, 6, WHITE);
+        ssd1306_fill_rectangle(0, cursorTeks, 4, 6, 8, WHITE);
     }
 
-    ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
-    ssd1306_draw_string_adafruit(0, 2, 55, "< DEL", BLACK, WHITE);
-    ssd1306_draw_string_adafruit(0, 45, 55, "[OK] CONNECT", BLACK, WHITE);
+    // 2. Gambar Grid Keyboard QWERTY
+    for (int r = 0; r < 4; r++) {
+        for (int c = 0; c < 10; c++) {
+            char ch[2] = { kbLayout[kbPage][r][c], '\0' };
+            
+            // Hitung kordinat X dan Y per huruf
+            int xPos = 4 + (c * 12); 
+            int yPos = 18 + (r * 11);
+            
+            // Ubah simbol sistem jadi teks ikon biar paham
+            const char* label = ch;
+            if (ch[0] == '<') label = "<";      // Ikon Backspace
+            else if (ch[0] == '*') label = "^"; // Ikon Shift/Page
+            else if (ch[0] == '>') label = "OK"; // Ikon Enter/Connect
+
+            // Kalo huruf ini lagi disorot (ditunjuk joystick)
+            if (r == kbY && c == kbX) {
+                // Kasih blok putih, hurufnya jadi hitam (Inverse)
+                ssd1306_fill_rectangle(0, xPos - 1, yPos - 1, 11, 10, WHITE);
+                ssd1306_draw_string_adafruit(0, xPos, yPos, (char*)label, BLACK, WHITE);
+            } else {
+                // Huruf biasa
+                ssd1306_draw_string_adafruit(0, xPos, yPos, (char*)label, WHITE, BLACK);
+            }
+        }
+    }
     
     ssd1306_refresh(0, true);
 }

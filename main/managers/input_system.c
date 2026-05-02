@@ -45,7 +45,8 @@ void handleDinoInput(int btn);
 
 void handleJoystick() {
     static uint32_t lastPress = 0;
-    if (input_millis() - lastPress < 250) return; 
+    uint32_t debounceLimit = (appMode == 8) ? 120 : 250; 
+    if (input_millis() - lastPress < debounceLimit) return; 
 
     // --- 1. TENTUIN DULU BTN NYA ---
     int btn = BTN_NONE;
@@ -179,7 +180,7 @@ lastPress = input_millis();
                 aktifModeSpam = 2; 
                 appMode = 4;
                 spamState = 0;
-            } else if (currentMenu == 4 && currentSub == 1) {
+            } else if (currentMenu == 4 && currentSub == 0) {
                 appMode = 11;
             }
             lastPress = input_millis();
@@ -351,47 +352,71 @@ void handleNavigasiDeauth(int btn) {
     }
 }
 
-void handleInputPassword(int btn) {
-    // Ambil karakter yang lagi ditunjuk kursor sekarang
-    char currentCh = inputPassword[cursorPass];
+// --- TARUH INI DI LUAR FUNGSI (Di atas handleInputPassword) ---
+int kbX = 0;
+int kbY = 0;
+int kbPage = 0; // 0 = Huruf Kecil, 1 = Huruf Gede/Simbol
 
+// Layout QWERTY Mini (4 Baris x 10 Kolom)
+const char kbLayout[2][4][10] = {
+    { // PAGE 0: Huruf Kecil & Angka
+        {'1','2','3','4','5','6','7','8','9','0'},
+        {'q','w','e','r','t','y','u','i','o','p'},
+        {'a','s','d','f','g','h','j','k','l','@'},
+        {'z','x','c','v','b','n','m','<','*','>'}
+    },
+    { // PAGE 1: Huruf Gede & Simbol
+        {'!','#','$','%','&','-','+','(',')','='},
+        {'Q','W','E','R','T','Y','U','I','O','P'},
+        {'A','S','D','F','G','H','J','K','L','_'},
+        {'Z','X','C','V','B','N','M','<','*','>'}
+    }
+};
+
+// --- GANTI FUNGSI INI FULL ---
+void handleInputPassword(int btn) {
     if (btn == BTN_UP) {
-        // Gulir karakter ke atas (A -> B -> C)
-        if (currentCh == 0) currentCh = 33; // Mulai dari '!'
-        else if (currentCh < 126) currentCh++;
-        inputPassword[cursorPass] = currentCh;
+        kbY--; if(kbY < 0) kbY = 3; // Teleport ke bawah
     } 
     else if (btn == BTN_DOWN) {
-        // Gulir karakter ke bawah (C -> B -> A)
-        if (currentCh > 33) currentCh--;
-        inputPassword[cursorPass] = currentCh;
-    }
-    else if (btn == BTN_RIGHT) {
-        // Geser kursor ke kanan buat huruf selanjutnya
-        if (cursorPass < 63) {
-            cursorPass++;
-            // Kalo geser ke kanan dan masih kosong, kasih default huruf 'a' (97)
-            if (inputPassword[cursorPass] == 0) inputPassword[cursorPass] = 97;
-        }
-    }
+        kbY++; if(kbY > 3) kbY = 0; // Teleport ke atas
+    } 
     else if (btn == BTN_LEFT) {
-        // Fungsi Backspace / Geser ke kiri
-        if (cursorPass > 0) {
-            inputPassword[cursorPass] = '\0'; // Hapus huruf sekarang
-            cursorPass--; // Mundur kursor
-        } else {
-            // Kalo kursor di posisi 0 dipencet kiri, balik ke menu action
-            appMode = 1; // Ganti ke mode scanner lu (biasanya 2 atau sesuai settingan lu)
-        }
-    }
+        kbX--; if(kbX < 0) kbX = 9; // Teleport ke kanan
+    } 
+    else if (btn == BTN_RIGHT) {
+        kbX++; if(kbX > 9) kbX = 0; // Teleport ke kiri
+    } 
     else if (btn == BTN_OK) {
-        // TOMBOL EKSEKUSI!
-        if (strlen(inputPassword) >= 8) { // Standar WiFi minimal 8 karakter
-            triggerConnect = true; 
-            // Nanti di wifi_system.c dia bakal liat triggerConnect ini dan statusKoneksi jadi 0
+        char selected = kbLayout[kbPage][kbY][kbX];
+        int len = strlen(inputPassword);
+        
+        if (selected == '<') { 
+            // TOMBOL BACKSPACE (Hapus 1 huruf)
+            if(len > 0) inputPassword[len - 1] = '\0';
+            else appMode = 1; // Kalo udah kosong dipencet backspace, balik ke menu
+        } 
+        else if (selected == '*') { 
+            // TOMBOL SHIFT (Ganti halaman keyboard)
+            kbPage = !kbPage; 
+        }
+        else if (selected == '>') { 
+            // TOMBOL CONNECT (ENTER)
+            if (len >= 8) {
+                triggerConnect = true;
+                appMode = 10; // Pindah ke layar Connecting
+            }
+        }
+        else { 
+            // NGETIK HURUF
+            if (len < 63) {
+                inputPassword[len] = selected;
+                inputPassword[len + 1] = '\0';
+            }
         }
     }
 }
+
 
 
 void handleNavigasiSpam(int btn) {
