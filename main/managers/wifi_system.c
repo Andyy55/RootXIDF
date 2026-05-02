@@ -227,9 +227,7 @@ void loopWiFi(void * pvParameters) {
         esp_wifi_init(&cfg);
         esp_wifi_set_storage(WIFI_STORAGE_RAM);
         isWifiInit = true;
-        esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL);
-esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL);
-    }
+        
 // Tambahin ini sebelum masuk ke while(1) di loopWiFi
 
 
