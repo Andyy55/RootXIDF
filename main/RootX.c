@@ -51,7 +51,7 @@ extern void simpan_highscore_dino(int hs);
 
 float rawScore = 0;
 int dinoScore = 0, dinoHighScore = -1;
-int dinoY = 32;        // Posisi tanah baru buat Dino 24px
+int dinoY = 36;        // Posisi tanah baru buat Dino 24px
 float dinoVy = 0;      
 bool isJumping = false;
 int obstacleX = 128, obstacleY = 32, obstacleType = 0; // 0=Kaktus1, 1=Kaktus2, 2=Burung
