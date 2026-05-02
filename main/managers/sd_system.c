@@ -18,8 +18,7 @@
 
 sdmmc_card_t *card;
 const char mount_point[] = MOUNT_POINT;
-
-// ========================================================
+//==================
 // 1. FUNGSI INISIALISASI (MOUNTING)
 // ========================================================
 bool init_sdcard() {
@@ -110,3 +109,21 @@ void baca_file(const char *path) {
     }
     fclose(f);
 }
+
+int baca_highscore_dino() {
+    FILE *f = fopen("/sdcard/dinohi.txt", "r");
+    if (f == NULL) return 0; // Kalo belum ada, anggap 0
+    int hs = 0;
+    fscanf(f, "%d", &hs);
+    fclose(f);
+    return hs;
+}
+
+void simpan_highscore_dino(int hs) {
+    FILE *f = fopen("/sdcard/dinohi.txt", "w");
+    if (f != NULL) {
+        fprintf(f, "%d", hs);
+        fclose(f);
+    }
+}
+

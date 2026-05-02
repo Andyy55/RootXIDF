@@ -15,6 +15,7 @@
 #define MAX_STARS 15
 
 
+
 // --- DATA UNTUK ANIMASI BINTANG ---
 typedef struct {
     float x, y, z;
@@ -909,106 +910,140 @@ void tampilkanSpamScreen(const char* judul, const char* subTeks) {
 
 
 
+
 void renderDinoGame() {
+    if (dinoHighScore == -1) dinoHighScore = baca_highscore_dino(); // Load pertama kali
+
     ssd1306_clear(0);
 
-    // --- 1. RENDER FOOTER ---
-    ssd1306_draw_hline(0, 0, 52, 128, WHITE); // Garis Tanah/Footer
-    char footBuf[64];
-    snprintf(footBuf, sizeof(footBuf), "< BACK    %d/%d", dinoScore, dinoLimit);
-    ssd1306_draw_string_adafruit(0, 2, 55, footBuf, WHITE, BLACK);
+    // --- RENDER FOOTER HILANG, GANTI UI ATAS ---
+    ssd1306_draw_string_adafruit(0, 0, 0, "< BACK", WHITE, BLACK);
+    
+    // Kedip Skor tiap kelipatan 100
+    bool blinkScore = ((dinoScore % 100) < 10 && dinoScore > 0 && dinoState == 0);
+    if (!blinkScore) {
+        char scoreBuf[32];
+        snprintf(scoreBuf, sizeof(scoreBuf), "HI:%05d %05d", dinoHighScore, dinoScore);
+        ssd1306_draw_string_adafruit(0, 45, 0, scoreBuf, WHITE, BLACK);
+    }
 
-    // --- 2. STATE 0: GAMEPLAY ---
-    // --- 2. STATE 0: GAMEPLAY ---
+    // --- STATE 0: MAIN ---
     if (dinoState == 0) {
-        // Fisika Gravitasi Smooth
+        // Sistem Siang Malam (Tiap 500 skor)
+        bool isNight = ((dinoScore / 500) % 2 == 1);
+        ssd1306_invert_display(0, isNight);
+
+        // Fisika & Kecepatan
+        rawScore += (gameSpeed * 0.1); 
+        dinoScore = (int)rawScore;
+        gameSpeed = 3.0 + (dinoScore / 200.0);
+        if (gameSpeed > 8.0) gameSpeed = 8.0; // Batas max biar mata gak picek
+
+        // Langit & Bintang
+        skyX -= 1;
+        if (skyX < -20) skyX = 128;
+        if (isNight) {
+            oled_draw_bitmap(0, skyX, 5, bulan_16, 16, 16, WHITE);
+            for(int i=0; i<5; i++) {
+                starX[i] -= 1;
+                if(starX[i] < 0) starX[i] = 128;
+                ssd1306_draw_pixel(0, starX[i], starY[i], WHITE);
+            }
+        } else {
+            oled_draw_bitmap(0, skyX, 5, matahari_16, 16, 16, WHITE);
+        }
+
+        // Fisika Lompat
         dinoY += dinoVy;
-        if (isJumping) dinoVy += 1; 
-        
-        if (dinoY >= 27) { 
-            dinoY = 27;
+        if (isJumping) dinoVy += 1.2; // Gravitasi
+        if (dinoY >= 32) { // Lantai
+            dinoY = 32;
             isJumping = false;
             dinoVy = 0;
         }
 
-        // --- SISTEM AKSELERASI (MAKIN SKOR TINGGI, MAKIN NGEBUT) ---
-        // Tiap kelipatan 100 skor, kecepatan kaktus nambah 1
-        int currentSpeed = 3 + (dinoScore / 100); 
-        if (currentSpeed > 8) currentSpeed = 8; // Mentok di speed 8 biar gak teleport (nembus layar)
-
-        // Kaktus Jalan
-        cactusX -= currentSpeed; 
-        if (cactusX < -16) {
-            cactusX = 128 + (rand() % 40); 
-            dinoScore += 50; 
+        // Musuh Jalan
+        obstacleX -= (int)gameSpeed; 
+        if (obstacleX < -20) {
+            obstacleX = 128 + (rand() % 60); 
+            obstacleType = rand() % 3; // Acak musuh
+            
+            if (obstacleType == 2) { 
+                // Kalo Burung, acak tinggi (bawah, tengah, atas)
+                int h[3] = {32, 20, 10}; 
+                obstacleY = h[rand() % 3];
+            } else {
+                obstacleY = 40; // Kaktus di lantai
+            }
         }
 
-        // Hitbox HD (Lebarnya disesuaikan sama speed biar gak nge-bug nembus)
-        if (cactusX > 0 && cactusX < (16 + currentSpeed) && dinoY > 15) {
+        // --- RENDER GROUND (TANAH) ---
+        ssd1306_draw_hline(0, 0, 56, 128, WHITE); // Garis solid
+        // Tambahan detail tanah putus-putus
+        for(int p=0; p<128; p+=10) {
+            ssd1306_draw_hline(0, p - ((int)(rawScore*10)%10), 58 + (rand()%3), rand()%5, WHITE);
+        }
+
+        // Gambar Musuh
+        if (obstacleType == 0) oled_draw_bitmap(0, obstacleX, obstacleY, kaktus_16, 16, 16, WHITE);
+        else if (obstacleType == 1) oled_draw_bitmap(0, obstacleX, obstacleY, kaktus_banyak, 16, 16, WHITE);
+        else oled_draw_bitmap(0, obstacleX, obstacleY, ptero_16, 16, 16, WHITE);
+
+        // Gambar Dino 24x24
+        oled_draw_bitmap(0, 10, dinoY, dino_24, 24, 24, WHITE);
+
+        // --- HITBOX PRESISI ---
+        int dinoRight = 10 + 16; 
+        int dinoBottom = dinoY + 20;
+        int obsRight = obstacleX + 12;
+        int obsBottom = obstacleY + 14;
+
+        if (obstacleX < dinoRight && obsRight > 15 && dinoY < obsBottom && dinoBottom > obstacleY) {
             dinoState = 1; // MODAR
+            ssd1306_invert_display(0, false); // Normalin layar pas mati
+            if (dinoScore > dinoHighScore) {
+                dinoHighScore = dinoScore;
+                simpan_highscore_dino(dinoHighScore);
+            }
         }
 
-        if (dinoScore >= dinoLimit) {
-            dinoState = 2; // LIMIT TERCAPAI, WAKTUNYA DITOLAK
+        if (dinoScore >= dinoLimit) { // BATAS SKOR KETEMU CEWEK
+            dinoState = 2; 
             endTimer = 0;
+            ssd1306_invert_display(0, false);
         }
-
-        // --- ANIMASI KAKI MAKIN CEPET ---
-        // Kecepatan normal 150ms. Makin gede skor, makin kecil delay-nya (makin cepet ganti frame)
-        int animSpeed = 150 - (dinoScore / 10);
-        if (animSpeed < 50) animSpeed = 50; // Mentok di 50ms biar kaki dino gak kram
-
-        const unsigned char* frameDino = dinoBiasa_16;
-        if (!isJumping) {
-            frameDino = ((millis() / animSpeed) % 2 == 0) ? dinoLari1_16 : dinoLari2_16;
-        }
-        
-        oled_draw_bitmap(0, 10, dinoY, frameDino, 16, 16, WHITE);
-        oled_draw_bitmap(0, cactusX, 27, kaktus_16, 16, 16, WHITE);
 
     } 
-
-    // --- 3. STATE 1: MATI NABRAK ---
+    // --- STATE 1: MATI (UI BERSIH) ---
     else if (dinoState == 1) {
-        oled_draw_bitmap(0, 10, dinoY, dinoBiasa_16, 16, 16, WHITE);
-        oled_draw_bitmap(0, cactusX, 27, kaktus_16, 16, 16, WHITE);
-        
-        ssd1306_draw_string_adafruit(0, 30, 5, "NABRAK COK!", BLACK, WHITE);
-        ssd1306_draw_string_adafruit(0, 20, 15, "Pencet OK", WHITE, BLACK);
+        // Layar udah di-clear di atas, jadi teks gak numpuk
+        ssd1306_draw_string_adafruit(0, 30, 15, "GAME OVER", WHITE, BLACK);
+        char finalSc[32];
+        snprintf(finalSc, sizeof(finalSc), "Score: %d", dinoScore);
+        ssd1306_draw_string_adafruit(0, 35, 30, finalSc, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 20, 45, "[OK] RESTART", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 25, 55, "[<] KELUAR", WHITE, BLACK);
     } 
-    // --- 4. STATE 2: ENDING CINEMATIC SADBOY ---
+    // --- STATE 2: ENDING CINEMATIC ---
     else if (dinoState == 2) {
         endTimer++;
-
-        // Dino cowok lari ke tengah layar
         int walkX = 10;
         if (endTimer < 50) walkX = 10 + (endTimer * 20 / 50);
         else walkX = 30;
 
-        // Dino Cewek nunggu di kanan
-        if (endTimer > 30) oled_draw_bitmap(0, 80, 27, dinoCewe_16, 16, 16, WHITE);
+        if (endTimer > 30) oled_draw_bitmap(0, 80, 32, dino_24, 24, 24, WHITE); // Ceweknya
 
-        // Animasi jalan dino cowok
-        const unsigned char* frameDino = ((millis() / 150) % 2 == 0) ? dinoLari1_16 : dinoLari2_16;
-        if (endTimer > 50) frameDino = dinoBiasa_16; 
-        oled_draw_bitmap(0, walkX, 27, frameDino, 16, 16, WHITE);
+        oled_draw_bitmap(0, walkX, 32, dino_24, 24, 24, WHITE);
 
-        // Nembak pake Love
-        if (endTimer > 60 && endTimer < 110) {
-            oled_draw_bitmap(0, 55, 15, heart_16, 16, 16, WHITE);
-        }
-        // Ditolak mentah-mentah
+        if (endTimer > 60 && endTimer < 110) oled_draw_bitmap(0, 55, 15, heart_16, 16, 16, WHITE);
         else if (endTimer >= 110) {
             oled_draw_bitmap(0, 55, 15, broken_16, 16, 16, WHITE);
             ssd1306_draw_string_adafruit(0, 25, 0, "KITA TEMENAN", WHITE, BLACK);
             ssd1306_draw_string_adafruit(0, 35, 10, "AJA YAA..", WHITE, BLACK);
-            
-            // Dino cowok nunduk sedih (Turun 2 pixel)
-            oled_draw_bitmap(0, walkX, 29, dinoBiasa_16, 16, 16, WHITE); 
         }
 
         if (endTimer > 160) {
-            ssd1306_draw_string_adafruit(0, 15, 35, "[OK] Move On", WHITE, BLACK);
+            ssd1306_draw_string_adafruit(0, 25, 55, "[OK] MOVE ON", WHITE, BLACK);
         }
     }
 

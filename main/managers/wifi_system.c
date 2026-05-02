@@ -146,20 +146,33 @@ static void sanitize_ssid(const uint8_t* input_ssid, char* output_buffer, size_t
     }
 }
 
+// --- TARUH INI DI ATAS FUNGSI EVENT HANDLER ---
+static int retry_count = 0; 
+
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data) {
+                                    
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        statusKoneksi = 2; // GAGAL (Sandi salah / Sinyal ilang)
-        isWiFiConnected = false;
-        printf("Koneksi Gagal, Cek Password!\n");
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+    } 
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        if (retry_count < 4) { // Kalo gagal, coba terus sampe 4 kali!
+            esp_wifi_connect();
+            retry_count++;
+            printf("Gagal konek, nyoba lagi... (%d/4)\n", retry_count);
+        } else {
+            statusKoneksi = 2; // BENERAN GAGAL (Password Fix Salah)
+            isWiFiConnected = false;
+            printf("Mokad Cok! Password salah atau sinyal ampas.\n");
+        }
+    } 
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         statusKoneksi = 1; // BERHASIL (Dapet IP)
         isWiFiConnected = true;
+        retry_count = 0; // Reset counter kalo sukses
         
-        // Simpan info buat menu Connected WiFi
+        // Simpan info buat menu
         strcpy(connSSID, targetTerkunci.ssid);
         connRSSI = targetTerkunci.rssi;
         connCH = targetTerkunci.channel;
@@ -167,6 +180,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         printf("Koneksi Berhasil! IP: " IPSTR "\n", IP2STR(&event->ip_info.ip));
     }
 }
+
 
 
 void loopWiFi(void * pvParameters) {
@@ -218,7 +232,14 @@ esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_h
         else if (triggerConnect) {
             statusKoneksi = 0; // Set status lagi "Connecting..."
             
-            wifi_config_t wifi_config = {};
+            retry_count = 0;   // Reset jumlah percobaan
+            
+            esp_wifi_disconnect(); // Putusin paksa koneksi yang nyangkut sebelumnya
+            
+            // WAJIB PAKE {0} BIAR MEMORI BERSIH DARI SAMPAH!
+            wifi_config_t wifi_config = {0}; 
+            
+            
             strcpy((char*)wifi_config.sta.ssid, targetTerkunci.ssid);
             strcpy((char*)wifi_config.sta.password, inputPassword);
 

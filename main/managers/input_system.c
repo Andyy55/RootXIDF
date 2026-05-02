@@ -448,14 +448,17 @@ void handleNavigasiSpam(int btn) {
 void handleDinoInput(int btn) {
     if (dinoState == 0) {
         if ((btn == BTN_OK || btn == BTN_UP) && !isJumping) {
-            dinoVy = -7; // Lompat HD yang smooth
+            dinoVy = -8.5; // Lompatan disesuaikan buat berat Dino 24px
             isJumping = true;
         }
     } else {
-        if (btn == BTN_OK) { // Restart Game
+        if (btn == BTN_OK) { 
+            // Reset Game
             dinoScore = 0;
-            cactusX = 128;
-            dinoY = 27;
+            rawScore = 0;
+            gameSpeed = 3.0;
+            obstacleX = 128;
+            dinoY = 32;
             dinoVy = 0;
             isJumping = false;
             dinoState = 0;
@@ -463,11 +466,12 @@ void handleDinoInput(int btn) {
         }
     }
 
-    // Tombol KIRI = Keluar Game kapan aja
+    // Tombol Keluar (Kiri)
     if (btn == BTN_LEFT) {
-        appMode = 0; // Balik Menu Utama
-        dinoScore = 0;
-        cactusX = 128;
+        ssd1306_invert_display(0, false); // Pastiin layar gak nyangkut item
+        appMode = 0; 
+        dinoScore = 0; rawScore = 0;
+        obstacleX = 128;
         dinoState = 0;
     }
 }
