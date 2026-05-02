@@ -259,7 +259,7 @@ void tampilkanMenuUtama() {
             
             // 3. Icon loncat cuma buat menu ini aja
             iconBounce = getBounce(200, 2); 
-            tambahansu = 4
+            tambahansu = 4;
             
             textColor = BLACK; 
             bgColor = WHITE;
