@@ -14,7 +14,73 @@
 #define BLACK 0
 #define MAX_STARS 15
 
+extern tampilkanMenuLogo(void);
+extern void tampilkanMenuUtama(void);
+extern void handleJoystick(void);
 
+bool introDone = false; // Penanda intro sudah lewat
+
+void init_joystick() {
+    int pins[] = {PIN_UP, PIN_DOWN, PIN_LEFT, PIN_RIGHT, PIN_OK};
+    for(int i = 0; i < 5; i++) {
+        gpio_set_direction(pins[i], GPIO_MODE_INPUT);
+        gpio_set_pull_mode(pins[i], GPIO_PULLUP_ONLY);
+    }
+}
+
+void task_display(void *pvParameters) {
+init_joystick();
+if (ssd1306_init(0, 9, 8)) {
+    vTaskDelay(pdMS_TO_TICKS(100)); // <--- KUNCI SAKTI: Kasih napas 100ms
+    ssd1306_select_font(0, 0);
+    ssd1306_clear(0);
+    ssd1306_refresh(0, true);
+    ESP_LOGI("RootX", "OLED Ready!");
+} else {
+    ESP_LOGE("RootX", "OLED Gagal Inisialisasi!");
+}
+
+    tampilkanLogoDulu();
+    tampilkanIntroAnime();
+    tampilkanTeksSplash();
+    introDone = true;
+    for(;;) {
+        // Cek mode aplikasi dan tampilkan layar yang pas
+handleJoystick(); // Cek input
+
+        if (appMode == 0) {
+            if (inSubMenu == false) tampilkanMenuLogo();
+            else tampilkanMenuUtama();
+        } 
+        else if (appMode == 1) {
+            tampilkanWifiScanner(); 
+        } 
+        else if (appMode == 2) {
+            tampilkanDeauthScreen(); 
+        } 
+        else if (appMode == 3) { 
+            tampilkanBrightness();
+        } 
+        else if (appMode == 4) {
+            if (aktifModeSpam == 1) tampilkanSpamScreen("BEACON SPAM", "Start Spam?");
+            else if (aktifModeSpam == 2) tampilkanSpamScreen("RICKROLL", "Start Spam?");
+        } else if (appMode == 5) { 
+            tampilkanStationScanner();
+        } else if (appMode == 6) { // Kita kasih mode 6 buat Track
+    tampilkanTrackScreen();
+} else if (appMode == 7) {
+tampilkandeauthsta();
+} else if (appMode == 8) {
+tampilkanEvilTwinScreen();
+} else if (appMode == 11) {
+renderDinoGame();
+}
+
+
+        // Kasih jeda dikit biar gak rakus CPU (kira-kira 30 FPS)
+        vTaskDelay(pdMS_TO_TICKS(33)); 
+    }
+}
 
 // --- DATA UNTUK ANIMASI BINTANG ---
 typedef struct {
@@ -186,44 +252,7 @@ const char* subMenuGame[] = {
 // LOGIKA TAMPILAN
 // ==========================================
 
-void task_display(void *pvParameters) {
-    for(;;) {
-        // Cek mode aplikasi dan tampilkan layar yang pas
-handleJoystick(); // Cek input
 
-        if (appMode == 0) {
-            if (inSubMenu == false) tampilkanMenuLogo();
-            else tampilkanMenuUtama();
-        } 
-        else if (appMode == 1) {
-            tampilkanWifiScanner(); 
-        } 
-        else if (appMode == 2) {
-            tampilkanDeauthScreen(); 
-        } 
-        else if (appMode == 3) { 
-            tampilkanBrightness();
-        } 
-        else if (appMode == 4) {
-            if (aktifModeSpam == 1) tampilkanSpamScreen("BEACON SPAM", "Start Spam?");
-            else if (aktifModeSpam == 2) tampilkanSpamScreen("RICKROLL", "Start Spam?");
-        } else if (appMode == 5) { 
-            tampilkanStationScanner();
-        } else if (appMode == 6) { // Kita kasih mode 6 buat Track
-    tampilkanTrackScreen();
-} else if (appMode == 7) {
-tampilkandeauthsta();
-} else if (appMode == 8) {
-tampilkanEvilTwinScreen();
-} else if (appMode == 11) {
-renderDinoGame();
-}
-
-
-        // Kasih jeda dikit biar gak rakus CPU (kira-kira 30 FPS)
-        vTaskDelay(pdMS_TO_TICKS(33)); 
-    }
-}
 
 
 
