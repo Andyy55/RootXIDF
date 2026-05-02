@@ -186,6 +186,47 @@ const char* subMenuGame[] = {
 // LOGIKA TAMPILAN
 // ==========================================
 
+void task_display(void *pvParameters) {
+    for(;;) {
+        // Cek mode aplikasi dan tampilkan layar yang pas
+handleJoystick(); // Cek input
+
+        if (appMode == 0) {
+            if (inSubMenu == false) tampilkanMenuLogo();
+            else tampilkanMenuUtama();
+        } 
+        else if (appMode == 1) {
+            tampilkanWifiScanner(); 
+        } 
+        else if (appMode == 2) {
+            tampilkanDeauthScreen(); 
+        } 
+        else if (appMode == 3) { 
+            tampilkanBrightness();
+        } 
+        else if (appMode == 4) {
+            if (aktifModeSpam == 1) tampilkanSpamScreen("BEACON SPAM", "Start Spam?");
+            else if (aktifModeSpam == 2) tampilkanSpamScreen("RICKROLL", "Start Spam?");
+        } else if (appMode == 5) { 
+            tampilkanStationScanner();
+        } else if (appMode == 6) { // Kita kasih mode 6 buat Track
+    tampilkanTrackScreen();
+} else if (appMode == 7) {
+tampilkandeauthsta();
+} else if (appMode == 8) {
+tampilkanEvilTwinScreen();
+} else if (appMode == 11) {
+renderDinoGame();
+}
+
+
+        // Kasih jeda dikit biar gak rakus CPU (kira-kira 30 FPS)
+        vTaskDelay(pdMS_TO_TICKS(33)); 
+    }
+}
+
+
+
 void tampilkanMenuLogo() {
     ssd1306_clear(0);
     drawStarfield();
