@@ -41,6 +41,12 @@ extern void simpan_highscore_dino(int hs);
 
 extern int dinoLimit;   
 
+// Variabel buat Evil Twin
+extern bool isEvilTwin;
+extern int evilTwinState; 
+extern char stolenPassword[64];
+extern bool triggerEvilTwin;
+
 
 
 extern float rawScore;
