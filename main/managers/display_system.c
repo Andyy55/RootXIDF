@@ -1108,7 +1108,6 @@ void tampilkanMenuSavedIR() {
 }
 
 void tampilkanMenuIR() {
-    // Asumsi lu pake lib ssd1306, sesuaikan aja nama fungsinya kalau beda
     ssd1306_clear_screen(&dev, 0);
     char buf[32];
 
@@ -1133,6 +1132,7 @@ void tampilkanMenuIR() {
         snprintf(buf, sizeof(buf), "Bits : %d", last_ir_data.bits);
         ssd1306_draw_string_adafruit(&dev, 0, 44, (uint8_t *)buf, 12, 0);
         
-        ssd1306_draw_string_adafruit(&dev, 0, 56, (uint8_t *)"> SD Card Saved <", 12, 0); // Muat di baris paling bawah
+        ssd1306_draw_string_adafruit(&dev, 0, 56, (uint8_t *)"> SD Card Saved <", 12, 0);
     }
+    ssd1306_refresh_gram(&dev);
 }

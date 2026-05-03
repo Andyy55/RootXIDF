@@ -2,28 +2,27 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "driver/rmt.h"
+#include "freertos/queue.h"
+#include "driver/rmt_tx.h"
+#include "driver/rmt_rx.h"
+#include "driver/rmt_encoder.h"
 #include "esp_log.h"
 #include "globals.h"
 #include "ssd1306.h"
 
+// Ganti sesuai kaki ESP32 lu
 #define IR_RX_PIN GPIO_NUM_4  
-#define RMT_RX_CHANNEL RMT_CHANNEL_0
 #define IR_TX_PIN GPIO_NUM_5
-
-
 
 ir_read_state_t currentIRState = IR_STATE_CONFIRM;
 ir_data_t last_ir_data = {0};
 bool triggerReadIR = false;
 
-// Fungsi SAKTI buat nulis ke SD Card
+// --- FUNGSI SD CARD ---
 void simpan_ir_ke_sd() {
     FILE* f = fopen("/sdcard/ir_log.txt", "a");
     if (f == NULL) return;
     
-    // Format: Nama|Proto|Hex|Bits
-    // Contoh: Remote_1|NEC|00FF45BC|32
     fprintf(f, "Remote_%d|%s|%08lX|%d\n", 
             totalSavedRemotes + 1, 
             last_ir_data.protocol, 
@@ -36,6 +35,11 @@ void simpan_ir_ke_sd() {
 void hapus_remote_di_sd(int index_target) {
     FILE* f = fopen("/sdcard/ir_log.txt", "r");
     FILE* f_temp = fopen("/sdcard/temp.txt", "w");
+    if (!f || !f_temp) {
+        if(f) fclose(f);
+        if(f_temp) fclose(f_temp);
+        return;
+    }
     
     char line[64];
     int current_idx = 0;
@@ -54,123 +58,155 @@ void hapus_remote_di_sd(int index_target) {
     totalSavedRemotes--;
 }
 
-// SULAP: Nerjemahin sinyal kedip (RMT) jadi angka Hex (Protokol NEC)
-bool decode_nec(rmt_item32_t* item, size_t item_num) {
-    if (item_num < 68) return false; // NEC butuh minimal 68 pulse
-    
-    uint32_t data = 0;
-    int bit_count = 0;
+// ==========================================
+// RMT ESP-IDF V5 ENGINE (TRANSMIT & RECEIVE)
+// ==========================================
 
-    // Lewati pulse awal (Leader code) dan mulai baca bit data (Index 1 atau 2)
-    for (int i = 2; i < 66; i += 2) {
-        int mark = item[i].duration;
-        int space = item[i+1].duration;
-        
-        // Logika NEC: Space pendek = 0, Space panjang = 1
-        if (space > 1000) { 
-            data |= (1UL << bit_count); 
-        }
-        bit_count++;
-    }
-
-    strcpy(last_ir_data.protocol, "NEC");
-    last_ir_data.hex_code = data;
-    last_ir_data.bits = bit_count;
-    return true;
-}
-void build_nec_items(uint32_t hex_code, int bits, rmt_item32_t* items, size_t* num_items) {
+// Builder V5 untuk ngubah Hex jadi Sinyal NEC
+void build_nec_items(uint32_t hex_code, int bits, rmt_symbol_word_t* items, size_t* num_items) {
     int i = 0;
-
-    // 1. LEADER CODE (Awal mula sinyal: Mark 9000us, Space 4500us)
+    // 1. Leader Code
     items[i].level0 = 1; items[i].duration0 = 9000;
     items[i].level1 = 0; items[i].duration1 = 4500;
     i++;
 
-    // 2. DATA BITS (Bongkar Hex jadi 1 dan 0)
-    // Berdasarkan fungsi decode lu sebelumnya, kita baca dari bit terendah (LSB) ke tertinggi
+    // 2. Data Bits
     for (int b = 0; b < bits; b++) {
         bool bit_val = (hex_code & (1UL << b)) != 0;
-        
-        items[i].level0 = 1;
-        items[i].duration0 = 560; // Pulsa nyala selalu 560us
-
-        items[i].level1 = 0;
-        if (bit_val) {
-            items[i].duration1 = 1690; // Kalau '1', spasi-nya panjang (1690us)
-        } else {
-            items[i].duration1 = 560;  // Kalau '0', spasi-nya pendek (560us)
-        }
+        items[i].level0 = 1; items[i].duration0 = 560;
+        items[i].level1 = 0; items[i].duration1 = bit_val ? 1690 : 560;
         i++;
     }
 
-    // 3. STOP BIT (Penutup sinyal biar mesin tahu data udah abis)
+    // 3. Stop Bit
     items[i].level0 = 1; items[i].duration0 = 560;
-    items[i].level1 = 0; items[i].duration1 = 0; // Space bebas karena udah kelar
+    items[i].level1 = 0; items[i].duration1 = 5000;
     i++;
 
-    *num_items = i; // Balikin jumlah item yang udah dirakit
+    *num_items = i;
 }
 
-
+// Penembak IR V5 (Udah Built-in 38kHz Carrier)
 void transmit_ir(uint32_t hex, int bits) {
-    rmt_config_t config = RMT_DEFAULT_CONFIG_TX(IR_TX_PIN, RMT_CHANNEL_1);
-    
-    // --- SETTINGAN SAKTI 38 kHz ---
-    config.tx_config.carrier_en = true;
-    config.tx_config.carrier_freq_hz = 38000; // Standar remote TV/AC
-    config.tx_config.carrier_duty_percent = 33; // Duty cycle 1/3 biar LED awet
-    config.tx_config.idle_output_en = true;
-    config.tx_config.idle_level = 0;
-    config.clk_div = 80; // Divider 80 di ESP32 bikin 1 tick RMT = 1 microsecond
-    
-    rmt_config(&config);
-    rmt_driver_install(config.channel, 0, 0);
+    rmt_tx_channel_handle_t tx_chan = NULL;
+    rmt_tx_channel_config_t tx_chan_config = {
+        .clk_src = RMT_CLK_SRC_DEFAULT,
+        .resolution_hz = 1000000, // Resolusi 1us
+        .mem_block_symbols = 64,
+        .gpio_num = IR_TX_PIN,
+        .trans_queue_depth = 4,
+    };
+    ESP_ERROR_CHECK(rmt_new_tx_channel(&tx_chan_config, &tx_chan));
 
-    // Siapin peluru (Item RMT)
+    // Hidupkan Frekuensi 38kHz biar TV kerasa
+    rmt_carrier_config_t carrier_cfg = {
+        .duty_cycle = 0.33,
+        .frequency_hz = 38000,
+        .flags = { .polarity_active_low = false }
+    };
+    ESP_ERROR_CHECK(rmt_apply_carrier(tx_chan, &carrier_cfg));
+
+    rmt_encoder_handle_t copy_encoder = NULL;
+    rmt_copy_encoder_config_t copy_encoder_config = {};
+    ESP_ERROR_CHECK(rmt_new_copy_encoder(&copy_encoder_config, &copy_encoder));
+
+    ESP_ERROR_CHECK(rmt_enable(tx_chan));
+
     size_t num_items = 0;
-    rmt_item32_t items[100]; 
-    
-    // Panggil fungsi perakit peluru
+    rmt_symbol_word_t items[100];
     build_nec_items(hex, bits, items, &num_items);
+
+    rmt_transmit_config_t tx_config = { .loop_count = 0 };
+    ESP_ERROR_CHECK(rmt_transmit(tx_chan, copy_encoder, items, num_items * sizeof(rmt_symbol_word_t), &tx_config));
     
-    // Tembak!
-    rmt_write_items(RMT_CHANNEL_1, items, num_items, true);
-    rmt_wait_tx_done(RMT_CHANNEL_1, pdMS_TO_TICKS(100)); // Tunggu ampe kelar
+    // Nunggu ampe kelar nembak
+    rmt_tx_wait_all_done(tx_chan, -1);
+
+    // Hapus dari memori biar enteng
+    rmt_disable(tx_chan);
+    rmt_del_encoder(copy_encoder);
+    rmt_del_channel(tx_chan);
     
-    // Bersihin sisa driver biar gak makan RAM
-    rmt_driver_uninstall(RMT_CHANNEL_1);
-    printf("JLEBB!! Sinyal 0x%08lX (%d bits) Berhasil Ditembak!\n", hex, bits);
+    printf("JLEBB!! Sinyal 0x%08lX Berhasil Ditembak!\n", hex);
 }
 
-// Task di background buat nungguin remote dipencet
-void ir_sniffer_task(void *pvParameter) {
-    rmt_config_t rmt_rx_config = RMT_DEFAULT_CONFIG_RX(IR_RX_PIN, RMT_RX_CHANNEL);
-    rmt_config(&rmt_rx_config);
-    rmt_driver_install(rmt_rx_config.channel, 1000, 0);
+// Decoder V5 dari Sinyal ke Hex
+bool decode_nec(rmt_symbol_word_t* item, size_t item_num) {
+    if (item_num < 33) return false; 
+    uint32_t data = 0;
+    int bit_count = 0;
 
-    ringbuf_handle_t rb = NULL;
-    rmt_get_ringbuf_handle(RMT_RX_CHANNEL, &rb);
-    rmt_rx_start(RMT_RX_CHANNEL, true);
+    for (int i = 1; i < item_num; i++) {
+        if (item[i].level0 == 1 && item[i].level1 == 0) {
+            int space = item[i].duration1;
+            if (space > 1000) {
+                data |= (1UL << bit_count);
+            }
+            bit_count++;
+        }
+        if (bit_count >= 32) break;
+    }
+
+    if (bit_count >= 16) {
+        strcpy(last_ir_data.protocol, "NEC");
+        last_ir_data.hex_code = data;
+        last_ir_data.bits = bit_count;
+        return true;
+    }
+    return false;
+}
+
+// Callback pas sinyal masuk
+static bool rmt_rx_done_cb(rmt_rx_channel_handle_t rx_chan, const rmt_rx_done_event_data_t *edata, void *user_ctx) {
+    BaseType_t high_task_wakeup = pdFALSE;
+    xQueueSendFromISR((QueueHandle_t)user_ctx, edata, &high_task_wakeup);
+    return high_task_wakeup == pdTRUE;
+}
+
+// Task Sniffer V5
+void ir_sniffer_task(void *pvParameter) {
+    QueueHandle_t rx_queue = xQueueCreate(1, sizeof(rmt_rx_done_event_data_t));
+
+    rmt_rx_channel_handle_t rx_chan = NULL;
+    rmt_rx_channel_config_t rx_chan_config = {
+        .clk_src = RMT_CLK_SRC_DEFAULT,
+        .resolution_hz = 1000000,
+        .mem_block_symbols = 256,
+        .gpio_num = IR_RX_PIN,
+        .flags = {
+            .invert_in = true, // Sensor TSOP aktifnya Low, kita balik biar jadi High!
+        }
+    };
+    rmt_new_rx_channel(&rx_chan_config, &rx_chan);
+
+    rmt_rx_event_callbacks_t cbs = { .on_recv_done = rmt_rx_done_cb };
+    rmt_rx_register_event_callbacks(rx_chan, &cbs, rx_queue);
+    rmt_enable(rx_chan);
+
+    rmt_symbol_word_t raw_symbols[256];
+    rmt_receive_config_t receive_config = { .signal_delay_tout_ms = 100 }; // Delay timeout 100ms
 
     for(;;) {
         if (currentIRState == IR_STATE_WAITING && triggerReadIR) {
-            size_t rx_size = 0;
-            // Nunggu sinyal masuk...
-            rmt_item32_t *item = (rmt_item32_t *)xRingbufferReceive(rb, &rx_size, pdMS_TO_TICKS(1000));
-            
-            if (item) {
-                int item_num = rx_size / sizeof(rmt_item32_t);
-                
-                // Coba pecahin kode NEC
-                if (decode_nec(item, item_num)) {
-                    simpan_ir_ke_sd(); // Langsung amankan ke memori!
+            // Mulai nguping...
+            rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &receive_config);
+
+            rmt_rx_done_event_data_t rx_data;
+            // Kalau dalam 1 detik dapet data...
+            if (xQueueReceive(rx_queue, &rx_data, pdMS_TO_TICKS(1000)) == pdTRUE) {
+                if (decode_nec(raw_symbols, rx_data.num_symbols)) {
+                    simpan_ir_ke_sd();
                     currentIRState = IR_STATE_RESULT;
                     triggerReadIR = false;
                 }
-                vRingbufferReturnItem(rb, (void *)item);
+            } else {
+                // Restart sistem nguping kalau sepi
+                rmt_disable(rx_chan);
+                rmt_enable(rx_chan);
             }
+        } else {
+            vTaskDelay(pdMS_TO_TICKS(50));
         }
-        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
@@ -178,4 +214,6 @@ void init_ir_system() {
     xTaskCreate(ir_sniffer_task, "ir_sniff", 4096, NULL, 5, NULL);
 }
 
-// --- TAMPILAN OLED (128x64 SAFE) ---
+// --- TAMPILAN OLED ---
+extern ssd1306_handle_t dev; // Asumsi struct lu namanya dev
+
