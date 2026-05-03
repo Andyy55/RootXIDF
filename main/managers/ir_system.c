@@ -102,67 +102,62 @@ static bool rmt_rx_done_cb(rmt_channel_handle_t rx_chan, const rmt_rx_done_event
 void ir_sniffer_task(void *pvParameter) {
     QueueHandle_t rx_queue = xQueueCreate(1, sizeof(rmt_rx_done_event_data_t));
     rmt_channel_handle_t rx_chan = NULL;
+    bool rmt_is_enabled = false; // Flag sakti biar gak bentrok
 
-    // 1. Inisialisasi awal
     rmt_rx_channel_config_t rx_chan_config = {
         .clk_src = RMT_CLK_SRC_DEFAULT,
         .resolution_hz = 1000000, 
-        .mem_block_symbols = 64,  // Kecil aja biar stabil di S3
+        .mem_block_symbols = 64,
         .gpio_num = IR_RX_PIN,
         .flags.invert_in = true, 
     };
 
-    // Bikin channel dan cek apakah berhasil
-    esp_err_t err = rmt_new_rx_channel(&rx_chan_config, &rx_chan);
-    if (err != ESP_OK) {
-        ESP_LOGE("IR_SYSTEM", "Gagal bikin channel: %s", esp_err_to_name(err));
+    if (rmt_new_rx_channel(&rx_chan_config, &rx_chan) != ESP_OK) {
         vTaskDelete(NULL);
         return;
     }
 
     rmt_rx_event_callbacks_t cbs = { .on_recv_done = rmt_rx_done_cb };
     rmt_rx_register_event_callbacks(rx_chan, &cbs, rx_queue);
-    rmt_enable(rx_chan);
 
     rmt_symbol_word_t raw_symbols[64];
     rmt_receive_config_t receive_config = { }; 
 
-    ESP_LOGI("IR_SYSTEM", "Scanner Ready di GPIO %d", IR_RX_PIN);
-
     for(;;) {
-        // Cek apakah user lagi mencet "Gas" di menu
         if (currentIRState == IR_STATE_WAITING && triggerReadIR) {
-            
-            // Pastikan channel dalam keadaan ENABLE sebelum panggil receive
-            // Ini obat buat log error lu tadi!
-            rmt_enable(rx_chan); 
+            // CUKUP ENABLE SEKALI AJA
+            if (!rmt_is_enabled) {
+                rmt_enable(rx_chan);
+                rmt_is_enabled = true;
+                ESP_LOGI("IR_SYSTEM", "RMT Siap Nerima...");
+            }
 
-            err = rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &receive_config);
+            // Langsung standby nerima
+            esp_err_t err = rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &receive_config);
             if (err == ESP_OK) {
                 rmt_rx_done_event_data_t rx_data;
-                // Tunggu sinyal remote selama 2 detik
-                if (xQueueReceive(rx_queue, &rx_data, pdMS_TO_TICKS(2000)) == pdTRUE) {
+                // Nunggu sinyal masuk
+                if (xQueueReceive(rx_queue, &rx_data, pdMS_TO_TICKS(1000)) == pdTRUE) {
                     if (decode_nec(raw_symbols, rx_data.num_symbols)) {
                         simpan_ir_ke_sd();
                         currentIRState = IR_STATE_RESULT;
                         triggerReadIR = false;
+                        
+                        // Berhenti bentar biar gak spam
+                        rmt_disable(rx_chan);
+                        rmt_is_enabled = false;
                     }
-                } else {
-                    // Kalau 2 detik gak ada sinyal, kita "Refresh" jalurnya
-                    ESP_LOGW("IR_SYSTEM", "Timeout, gak ada sinyal masuk...");
-                    rmt_disable(rx_chan);
                 }
-            } else {
-                // Jika rmt_receive gagal, coba reset channel
-                ESP_LOGE("IR_SYSTEM", "Receive error: %s", esp_err_to_name(err));
-                rmt_disable(rx_chan);
-                vTaskDelay(pdMS_TO_TICKS(100));
             }
         } else {
-            // Kalau lagi gak dipake (di menu luar), matiin aja RMT biar hemat batre
-            rmt_disable(rx_chan);
-            vTaskDelay(pdMS_TO_TICKS(200));
+            // Kalau gak dipake, matiin
+            if (rmt_is_enabled) {
+                rmt_disable(rx_chan);
+                rmt_is_enabled = false;
+            }
+            vTaskDelay(pdMS_TO_TICKS(100));
         }
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
