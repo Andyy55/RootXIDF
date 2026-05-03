@@ -11,7 +11,7 @@ idf_component_register(SRCS "RootX.c"
                             "managers/sd_system.c"
                             "managers/ir_system.c"
                        INCLUDE_DIRS "include" "."
-                       REQUIRES esp_wifi nvs_flash esp_netif esp_event esp_timer driver esp_driver_gpio fatfs sdmmc vfs esp_http_server)
+                       REQUIRES esp_wifi nvs_flash esp_netif esp_event esp_timer driver esp_driver_gpio fatfs sdmmc vfs esp_http_server esp_driver_rmt )
 
 # JIMAT SAKTI BYPASS DEAUTH TETEP AMAN DI SINI
 target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,-zmuldefs")
