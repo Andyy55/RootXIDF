@@ -92,7 +92,11 @@ tampilkandeauthsta();
 tampilkanEvilTwinScreen();
 } else if (appMode == 11) {
 renderDinoGame();
-}
+}else if (appMode == MODE_IR_SNIFFER) {    // <--- TAMBAHIN INI
+            tampilkanMenuIR();
+        } else if (appMode == MODE_SAVED_REMOTE) {  // <--- TAMBAHIN INI
+            tampilkanMenuSavedIR();
+        }
 
 
         // Kasih jeda dikit biar gak rakus CPU (kira-kira 30 FPS)
@@ -1019,4 +1023,116 @@ void tampilkanEvilTwinScreen() {
         ssd1306_draw_string_adafruit(0, 50, 40, stolenPassword, WHITE, BLACK);
     }
     ssd1306_refresh(0, true);
+}
+
+
+ir_saved_state_t currentIRSavedState = IR_SAVED_STATE_LIST;
+SavedRemote_t listSavedRemotes[20];
+int totalSavedRemotes = 0;
+int savedRemoteIndex = 0;
+int actionMenuIndex = 0; // 0 = Transmit, 1 = Hapus
+
+// Panggil fungsi ini pas PERTAMA KALI masuk menu Saved Remote
+void loadSavedRemotes() {
+    totalSavedRemotes = 0;
+    FILE* f = fopen("/sdcard/ir_log.txt", "r");
+    if (!f) return; // Kalau kosong/gak ada file
+
+    char line[64];
+    // Parsing format: Remote_1|NEC|00FF45BC|32
+    while (fgets(line, sizeof(line), f) && totalSavedRemotes < 20) {
+        char nama[16], proto[8];
+        uint32_t hex;
+        int bits;
+        if (sscanf(line, "%15[^|]|%7[^|]|%lx|%d", nama, proto, &hex, &bits) == 4) {
+            strcpy(listSavedRemotes[totalSavedRemotes].nama, nama);
+            strcpy(listSavedRemotes[totalSavedRemotes].proto, proto);
+            listSavedRemotes[totalSavedRemotes].hex = hex;
+            listSavedRemotes[totalSavedRemotes].bits = bits;
+            totalSavedRemotes++;
+        }
+    }
+    fclose(f);
+}
+
+void tampilkanMenuSavedIR() {
+    ssd1306_clear_screen(&dev, 0);
+
+    if (currentIRSavedState == IR_SAVED_STATE_LIST) {
+        // --- HEADER (BLOK PUTIH) ---
+        ssd1306_draw_string_adafruit(&dev, 0, 0, (uint8_t *)" == SAVED REMOTES ==", 12, 1);
+
+        if (totalSavedRemotes == 0) {
+            ssd1306_draw_string_adafruit(&dev, 10, 25, (uint8_t *)"Data Kosong!", 12, 0);
+        } else {
+            // Tampilkan max 3 item biar rapi (Paging logic)
+            int startIdx = (savedRemoteIndex / 3) * 3;
+            for (int i = 0; i < 3; i++) {
+                int curr = startIdx + i;
+                if (curr >= totalSavedRemotes) break;
+
+                char buf[32];
+                if (curr == savedRemoteIndex) {
+                    snprintf(buf, sizeof(buf), "> %s", listSavedRemotes[curr].nama);
+                } else {
+                    snprintf(buf, sizeof(buf), "  %s", listSavedRemotes[curr].nama);
+                }
+                ssd1306_draw_string_adafruit(&dev, 0, 16 + (i * 12), (uint8_t *)buf, 12, 0);
+            }
+        }
+
+        // --- FOOTER (BLOK PUTIH) ---
+        ssd1306_draw_string_adafruit(&dev, 0, 52, (uint8_t *)" [OK]Pilih   [<]Back", 12, 1);
+    } 
+    else if (currentIRSavedState == IR_SAVED_STATE_ACTION) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), " ACTION: %s ", listSavedRemotes[savedRemoteIndex].nama);
+        // Header
+        ssd1306_draw_string_adafruit(&dev, 0, 0, (uint8_t *)buf, 12, 1);
+
+        // Menu Transmit / Hapus
+        if (actionMenuIndex == 0) {
+            ssd1306_draw_string_adafruit(&dev, 15, 25, (uint8_t *)"> 1. TRANSMIT", 12, 0);
+            ssd1306_draw_string_adafruit(&dev, 15, 40, (uint8_t *)"  2. HAPUS", 12, 0);
+        } else {
+            ssd1306_draw_string_adafruit(&dev, 15, 25, (uint8_t *)"  1. TRANSMIT", 12, 0);
+            ssd1306_draw_string_adafruit(&dev, 15, 40, (uint8_t *)"> 2. HAPUS", 12, 0);
+        }
+    } 
+    else if (currentIRSavedState == IR_SAVED_STATE_SENDING) {
+        // Layar Polos, Tulisan Gede di Tengah!
+        ssd1306_draw_string_adafruit(&dev, 25, 25, (uint8_t *)"IR SEND!", 16, 0);
+    }
+
+    ssd1306_refresh_gram(&dev);
+}
+
+void tampilkanMenuIR() {
+    // Asumsi lu pake lib ssd1306, sesuaikan aja nama fungsinya kalau beda
+    ssd1306_clear_screen(&dev, 0);
+    char buf[32];
+
+    if (currentIRState == IR_STATE_CONFIRM) {
+        ssd1306_draw_string_adafruit(&dev, 10, 10, (uint8_t *)"SNIFF IR SIGNAL", 12, 0);
+        ssd1306_draw_string_adafruit(&dev, 30, 30, (uint8_t *)"YAKIN??", 16, 0);
+        ssd1306_draw_string_adafruit(&dev, 0, 50, (uint8_t *)"[OK] Gas   [X] Back", 12, 0);
+    } 
+    else if (currentIRState == IR_STATE_WAITING) {
+        ssd1306_draw_string_adafruit(&dev, 5, 20, (uint8_t *)"Menunggu", 16, 0);
+        ssd1306_draw_string_adafruit(&dev, 5, 40, (uint8_t *)"sinyal masuk...", 12, 0);
+    } 
+    else if (currentIRState == IR_STATE_RESULT) {
+        ssd1306_draw_string_adafruit(&dev, 0, 0, (uint8_t *)"== IR RESULT ==", 12, 0);
+        
+        snprintf(buf, sizeof(buf), "Type : %s", last_ir_data.protocol);
+        ssd1306_draw_string_adafruit(&dev, 0, 16, (uint8_t *)buf, 12, 0);
+        
+        snprintf(buf, sizeof(buf), "Data : %08lX", last_ir_data.hex_code);
+        ssd1306_draw_string_adafruit(&dev, 0, 30, (uint8_t *)buf, 12, 0);
+        
+        snprintf(buf, sizeof(buf), "Bits : %d", last_ir_data.bits);
+        ssd1306_draw_string_adafruit(&dev, 0, 44, (uint8_t *)buf, 12, 0);
+        
+        ssd1306_draw_string_adafruit(&dev, 0, 56, (uint8_t *)"> SD Card Saved <", 12, 0); // Muat di baris paling bawah
+    }
 }

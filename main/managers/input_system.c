@@ -18,6 +18,11 @@
 
 // Tarik fungsi dari display buat set brightness
 extern void setOledBrightness(uint8_t level);
+extern void tampilkanMenuSavedIR(void);
+extern void transmit_ir(uint32_t hex, int bits);
+extern void loadSavedRemotes(void);
+extern void hapus_remote_di_sd(int index_target);
+
 
 // Pengganti millis()
 uint32_t input_millis() {
@@ -60,6 +65,90 @@ void handleJoystick() {
     if (btn == BTN_NONE) return; 
 
     // --- 2. PANGGIL APPMODE ---
+    // Kalau lagi di menu IR Sniffer
+if (appMode == MODE_IR_SNIFFER) { 
+    if (btn == BTN_OK || btn == BTN_RIGHT) {
+        if (currentIRState == IR_STATE_CONFIRM) {
+            currentIRState = IR_STATE_WAITING;
+            triggerReadIR = true; 
+        }
+        else if (currentIRState == IR_STATE_RESULT) {
+            // Balik ke mode nunggu kalau mau scan ulang
+            currentIRState = IR_STATE_CONFIRM; 
+        }
+    }
+    else if (btn == BTN_LEFT || btn == BTN_BACK) {
+        if (currentIRState == IR_STATE_WAITING) {
+            triggerReadIR = false;
+            currentIRState = IR_STATE_CONFIRM; // Batalin nunggu
+        } else {
+            appMode = MODE_MENU_UTAMA; // Balik ke menu awal RootX
+        }
+    }
+}
+// Kalau lagi di menu Saved Remote
+if (appMode == MODE_SAVED_REMOTE) {
+
+    // --- STATE 1: LIST REMOTE ---
+    if (currentIRSavedState == IR_SAVED_STATE_LIST) {
+        if (btn == BTN_DOWN) {
+            if (savedRemoteIndex < totalSavedRemotes - 1) savedRemoteIndex++;
+        } 
+        else if (btn == BTN_UP) {
+            if (savedRemoteIndex > 0) savedRemoteIndex--;
+        } 
+        else if (btn == BTN_OK || btn == BTN_RIGHT) {
+            if (totalSavedRemotes > 0) {
+                currentIRSavedState = IR_SAVED_STATE_ACTION;
+                actionMenuIndex = 0; // Default kursor ke Transmit
+            }
+        } 
+        else if (btn == BTN_LEFT || btn == BTN_BACK) {
+            appMode = MODE_MENU_UTAMA;
+        }
+    }
+
+    // --- STATE 2: ACTION MENU ---
+    else if (currentIRSavedState == IR_SAVED_STATE_ACTION) {
+        if (btn == BTN_DOWN || btn == BTN_UP) {
+            // Bolak-balik index 0 dan 1 doang
+            actionMenuIndex = !actionMenuIndex; 
+        } 
+        else if (btn == BTN_LEFT || btn == BTN_BACK) {
+            currentIRSavedState = IR_SAVED_STATE_LIST; // Batal, balik ke list
+        } 
+        else if (btn == BTN_OK) {
+            if (actionMenuIndex == 0) {
+                // SIKAT TRANSMIT!
+                currentIRSavedState = IR_SAVED_STATE_SENDING;
+                tampilkanMenuSavedIR(); // Paksa gambar "IR SEND!" langsung detik ini
+                
+                // Tembak IR-nya (Fungsi yang tadi)
+                transmit_ir(listSavedRemotes[savedRemoteIndex].hex, listSavedRemotes[savedRemoteIndex].bits);
+                
+                // Jeda sekitar 500ms biar layar "IR SEND!" kelihatan
+                vTaskDelay(pdMS_TO_TICKS(500)); 
+                
+                // Balik ke Action Menu
+                currentIRSavedState = IR_SAVED_STATE_ACTION; 
+            } 
+            else if (actionMenuIndex == 1) {
+                // SIKAT HAPUS!
+                hapus_remote_di_sd(savedRemoteIndex); 
+                
+                // Reload array biar list-nya update otomatis
+                loadSavedRemotes(); 
+                
+                // Jaga-jaga biar kursor gak bablas kalau yang dihapus paling bawah
+                if (savedRemoteIndex >= totalSavedRemotes) savedRemoteIndex = totalSavedRemotes - 1;
+                if (savedRemoteIndex < 0) savedRemoteIndex = 0;
+                
+                currentIRSavedState = IR_SAVED_STATE_LIST; // Balik ke list
+            }
+        }
+    }
+}
+
     if (appMode == 1) { handleNavigasiScanner(btn); lastPress = input_millis(); return; }
     if (appMode == 2) { handleNavigasiDeauth(btn);  lastPress = input_millis(); return; }
     if (appMode == 4) { handleNavigasiSpam(btn);    lastPress = input_millis(); return; } 
@@ -164,7 +253,11 @@ lastPress = input_millis();
                 scrollPosScanner = 0; 
             } else if (currentMenu == 3 && currentSub == 0) { 
                 appMode = 3; 
-            } else if (currentMenu == 0 && currentSub == 2) {
+            } else if (currentMenu == 2 && currentSub == 0) { 
+                appMode = MODE_IR_SNIFFER; 
+            } else if (currentMenu == 2 && currentSub == 4) { 
+                appMode = MODE_SAVED_REMOTE; 
+            }else if (currentMenu == 0 && currentSub == 2) {
                 aktifModeSpam = 1; 
                 appMode = 4;       
                 spamState = 0;
@@ -418,3 +511,5 @@ void handleDinoInput(int btn) {
         dinoState = 0;
     }
 }
+
+
