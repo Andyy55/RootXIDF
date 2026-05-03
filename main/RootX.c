@@ -14,7 +14,7 @@
 
 extern void loopWiFi(void *pvParameters);
 extern void task_display(void *pvParameters);
-
+extern void init_ir_system(void);
 
 // ==========================================
 // THE BYPASSER: JIMAT SAKTI DEAUTH & BEACON
@@ -134,7 +134,7 @@ extern bool init_sdcard(); // Kasih tau compiler fungsinya ada di file lain
         // Kalau gagal, minimal lu tau dari log serial
         ESP_LOGE("RootX", "Yah, SD Card Gagal... Cek kabel GPIO 3 lu!");
     }
-    
+    init_ir_system(); 
     xTaskCreatePinnedToCore(
         loopWiFi,     /* Fungsi task (ada di wifi_system.c) */
         "TaskWiFi",   /* Nama task */
