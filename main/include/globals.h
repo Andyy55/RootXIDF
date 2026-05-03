@@ -11,6 +11,10 @@
 #define PIN_RIGHT 39
 #define PIN_OK    38
 
+
+#define MODE_IR_SNIFFER 9
+#define MODE_SAVED_REMOTE 10
+
 // --- STRUKTUR WIFI (String diganti char array) ---
 typedef struct {
   int id;
@@ -29,10 +33,46 @@ typedef struct {
     int paket_count;
 } StationInfo;
 
+// --- IR SYSTEM GLOBALS ---
+// --- SAVED REMOTE GLOBALS ---
+typedef enum {
+    IR_SAVED_STATE_LIST,
+    IR_SAVED_STATE_ACTION,
+    IR_SAVED_STATE_SENDING
+} ir_saved_state_t;
+
+typedef struct {
+    char nama[16];   // Misal: Remote_1
+    char proto[8];   // Misal: NEC
+    uint32_t hex;
+    int bits;
+} SavedRemote_t;
+
+extern ir_saved_state_t currentIRSavedState;
+extern SavedRemote_t listSavedRemotes[20]; // Batasin 20 aja biar RAM aman
+extern int totalSavedRemotes;
+extern int savedRemoteIndex;
+extern int actionMenuIndex;
+
+void loadSavedRemotes(void); // Fungsi buat baca SD Card ke Array
+void tampilkanMenuSavedIR(void);
+
+extern ir_read_state_t currentIRState;
+extern ir_data_t last_ir_data;
+extern bool triggerReadIR;
+// Tambahan buat navigasi list di SD Card
+extern int selectedRemoteIdx;
+extern int totalSavedRemotes;
+
+void transmit_ir(uint32_t hex, int bits); // Fungsi nembak
+void hapus_remote_di_sd(int index);       // Fungsi hapus
+
+void init_ir_system(void);
+void tampilkanMenuIR(void);
 
 // --- VARIABEL ENGINE GAME ---
 extern int baca_highscore_dino();
-extern void simpan_highscore_dino(int hs);
+void simpan_highscore_dino(int hs);
 
 
 // --- EXTERN VARIABEL GLOBAL ---
