@@ -56,6 +56,19 @@ extern int actionMenuIndex;
 
 void loadSavedRemotes(void); // Fungsi buat baca SD Card ke Array
 void tampilkanMenuSavedIR(void);
+// --- IR SYSTEM GLOBALS ---
+typedef enum {
+    IR_STATE_CONFIRM,
+    IR_STATE_WAITING,
+    IR_STATE_RESULT
+} ir_read_state_t;
+
+typedef struct {
+    char protocol[16];
+    uint32_t hex_code;
+    uint8_t bits;
+} ir_data_t;
+
 
 extern ir_read_state_t currentIRState;
 extern ir_data_t last_ir_data;
