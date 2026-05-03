@@ -102,7 +102,8 @@ static bool rmt_rx_done_cb(rmt_channel_handle_t rx_chan, const rmt_rx_done_event
 void ir_sniffer_task(void *pvParameter) {
     QueueHandle_t rx_queue = xQueueCreate(1, sizeof(rmt_rx_done_event_data_t));
     rmt_channel_handle_t rx_chan = NULL;
-    bool rmt_is_enabled = false; // Flag sakti biar gak bentrok
+    bool rmt_is_enabled = false;
+    bool is_receiving = false; // INI KUNCI SAKTINYA BIAR GAK SPAM ERROR
 
     rmt_rx_channel_config_t rx_chan_config = {
         .clk_src = RMT_CLK_SRC_DEFAULT,
@@ -125,39 +126,52 @@ void ir_sniffer_task(void *pvParameter) {
 
     for(;;) {
         if (currentIRState == IR_STATE_WAITING && triggerReadIR) {
-            // CUKUP ENABLE SEKALI AJA
+            
+            // 1. Nyalain RMT HANYA kalau masih mati
             if (!rmt_is_enabled) {
                 rmt_enable(rx_chan);
                 rmt_is_enabled = true;
-                ESP_LOGI("IR_SYSTEM", "RMT Siap Nerima...");
+                is_receiving = false;
+                xQueueReset(rx_queue); // Bersihin sisa sinyal sampah
             }
 
-            // Langsung standby nerima
-            esp_err_t err = rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &receive_config);
-            if (err == ESP_OK) {
-                rmt_rx_done_event_data_t rx_data;
-                // Nunggu sinyal masuk
-                if (xQueueReceive(rx_queue, &rx_data, pdMS_TO_TICKS(1000)) == pdTRUE) {
-                    if (decode_nec(raw_symbols, rx_data.num_symbols)) {
-                        simpan_ir_ke_sd();
-                        currentIRState = IR_STATE_RESULT;
-                        triggerReadIR = false;
-                        
-                        // Berhenti bentar biar gak spam
-                        rmt_disable(rx_chan);
-                        rmt_is_enabled = false;
-                    }
+            // 2. Suruh nangkep HANYA kalau lagi gak sibuk
+            if (!is_receiving) {
+                esp_err_t err = rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &receive_config);
+                if (err == ESP_OK) {
+                    is_receiving = true; // Tandain kalau dia lagi kerja!
+                } else {
+                    vTaskDelay(pdMS_TO_TICKS(50));
+                    continue; // Kalo gagal, coba lagi pelan-pelan
                 }
             }
+
+            // 3. Sabar nungguin Sinyal Masuk (Disini dia gak bakal manggil receive lagi)
+            rmt_rx_done_event_data_t rx_data;
+            if (xQueueReceive(rx_queue, &rx_data, pdMS_TO_TICKS(200)) == pdTRUE) {
+                is_receiving = false; // Sinyal masuk, status nerima kelar
+
+                if (decode_nec(raw_symbols, rx_data.num_symbols)) {
+                    simpan_ir_ke_sd();
+                    currentIRState = IR_STATE_RESULT;
+                    triggerReadIR = false;
+                    
+                    // Matiin RMT karena udah dapet sinyalnya
+                    rmt_disable(rx_chan);
+                    rmt_is_enabled = false;
+                }
+                // Catatan: Kalo dapet sinyal tapi gagal decode (noise/cahaya lampu), 
+                // kodenya bakal muter dan otomatis manggil rmt_receive lagi.
+            }
         } else {
-            // Kalau gak dipake, matiin
+            // Kalau lu keluar menu / batalin
             if (rmt_is_enabled) {
                 rmt_disable(rx_chan);
                 rmt_is_enabled = false;
+                is_receiving = false;
             }
             vTaskDelay(pdMS_TO_TICKS(100));
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
