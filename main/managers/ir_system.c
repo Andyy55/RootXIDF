@@ -102,37 +102,53 @@ static bool rmt_rx_done_cb(rmt_channel_handle_t rx_chan, const rmt_rx_done_event
 void ir_sniffer_task(void *pvParameter) {
     QueueHandle_t rx_queue = xQueueCreate(1, sizeof(rmt_rx_done_event_data_t));
     rmt_channel_handle_t rx_chan = NULL;
+
     rmt_rx_channel_config_t rx_chan_config = {
         .clk_src = RMT_CLK_SRC_DEFAULT,
-        .resolution_hz = 1000000,
-        .mem_block_symbols = 256,
+        .resolution_hz = 1000000, // 1us
+        .mem_block_symbols = 64,  // KECILIN KE 64 BIAR S3 GAK REWEL
         .gpio_num = IR_RX_PIN,
-        .flags.invert_in = true,
+        .flags.invert_in = true,  // Karena TSOP itu Active Low
     };
-    rmt_new_rx_channel(&rx_chan_config, &rx_chan);
+
+    // CEK ERROR PAS BIKIN CHANNEL
+    esp_err_t err = rmt_new_rx_channel(&rx_chan_config, &rx_chan);
+    if (err != ESP_OK) {
+        ESP_LOGE("IR_SYSTEM", "Gagal bikin RX channel: %s", esp_err_to_name(err));
+        vTaskDelete(NULL); // Matikan task daripada error terus
+        return;
+    }
+
     rmt_rx_event_callbacks_t cbs = { .on_recv_done = rmt_rx_done_cb };
-    rmt_rx_register_event_callbacks(rx_chan, &cbs, rx_queue);
-    rmt_enable(rx_chan);
-    rmt_symbol_word_t raw_symbols[256];
-    // V5 terbaru pake signal_range_min_ns/max_ns atau cuma timeout biasa
-    rmt_receive_config_t receive_config = { }; 
+    ESP_ERROR_CHECK(rmt_rx_register_event_callbacks(rx_chan, &cbs, rx_queue));
+    ESP_ERROR_CHECK(rmt_enable(rx_chan));
+
+    rmt_symbol_word_t raw_symbols[64]; // Sesuaikan sama mem_block_symbols
+    rmt_receive_config_t receive_config = {
+        .signal_range_min_ns = 1250,     // Abaikan noise di bawah 1.25us
+        .signal_range_max_ns = 12000000, // Timeout 12ms (NEC leader itu 9ms)
+    };
+
+    ESP_LOGI("IR_SYSTEM", "Scanner IR Ready di GPIO %d!", IR_RX_PIN);
 
     for(;;) {
         if (currentIRState == IR_STATE_WAITING && triggerReadIR) {
-            rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &receive_config);
-            rmt_rx_done_event_data_t rx_data;
-            if (xQueueReceive(rx_queue, &rx_data, pdMS_TO_TICKS(1000)) == pdTRUE) {
-                if (decode_nec(raw_symbols, rx_data.num_symbols)) {
-                    simpan_ir_ke_sd();
-                    currentIRState = IR_STATE_RESULT;
-                    triggerReadIR = false;
+            // Mulai nangkep
+            if (rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &receive_config) == ESP_OK) {
+                rmt_rx_done_event_data_t rx_data;
+                if (xQueueReceive(rx_queue, &rx_data, pdMS_TO_TICKS(1000)) == pdTRUE) {
+                    if (decode_nec(raw_symbols, rx_data.num_symbols)) {
+                        simpan_ir_ke_sd();
+                        currentIRState = IR_STATE_RESULT;
+                        triggerReadIR = false;
+                    }
                 }
-            } else {
-                rmt_disable(rx_chan); rmt_enable(rx_chan);
             }
-        } else { vTaskDelay(pdMS_TO_TICKS(50)); }
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
+
 
 void init_ir_system() { xTaskCreate(ir_sniffer_task, "ir_sniff", 4096, NULL, 5, NULL); }
 
