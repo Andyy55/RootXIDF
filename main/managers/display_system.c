@@ -1056,14 +1056,15 @@ void loadSavedRemotes() {
 }
 
 void tampilkanMenuSavedIR() {
-    ssd1306_clear_screen(&dev, 0);
+    ssd1306_clear(0); // Bersihin layar (ID 0)
 
     if (currentIRSavedState == IR_SAVED_STATE_LIST) {
         // --- HEADER (BLOK PUTIH) ---
-        ssd1306_draw_string_adafruit(&dev, 0, 0, (uint8_t *)" == SAVED REMOTES ==", 12, 1);
+        // Format library lu: (ID, X, Y, Teks, Warna Teks, Warna Background)
+        ssd1306_draw_string_adafruit(0, 0, 0, " == SAVED REMOTES ==", BLACK, WHITE);
 
         if (totalSavedRemotes == 0) {
-            ssd1306_draw_string_adafruit(&dev, 10, 25, (uint8_t *)"Data Kosong!", 12, 0);
+            ssd1306_draw_string_adafruit(0, 10, 25, "Data Kosong!", WHITE, BLACK);
         } else {
             // Tampilkan max 3 item biar rapi (Paging logic)
             int startIdx = (savedRemoteIndex / 3) * 3;
@@ -1077,62 +1078,65 @@ void tampilkanMenuSavedIR() {
                 } else {
                     snprintf(buf, sizeof(buf), "  %s", listSavedRemotes[curr].nama);
                 }
-                ssd1306_draw_string_adafruit(&dev, 0, 16 + (i * 12), (uint8_t *)buf, 12, 0);
+                ssd1306_draw_string_adafruit(0, 0, 16 + (i * 12), buf, WHITE, BLACK);
             }
         }
 
         // --- FOOTER (BLOK PUTIH) ---
-        ssd1306_draw_string_adafruit(&dev, 0, 52, (uint8_t *)" [OK]Pilih   [<]Back", 12, 1);
+        ssd1306_draw_string_adafruit(0, 0, 52, " [OK]Pilih   [<]Back", BLACK, WHITE);
     } 
     else if (currentIRSavedState == IR_SAVED_STATE_ACTION) {
         char buf[32];
         snprintf(buf, sizeof(buf), " ACTION: %s ", listSavedRemotes[savedRemoteIndex].nama);
         // Header
-        ssd1306_draw_string_adafruit(&dev, 0, 0, (uint8_t *)buf, 12, 1);
+        ssd1306_draw_string_adafruit(0, 0, 0, buf, BLACK, WHITE);
 
         // Menu Transmit / Hapus
         if (actionMenuIndex == 0) {
-            ssd1306_draw_string_adafruit(&dev, 15, 25, (uint8_t *)"> 1. TRANSMIT", 12, 0);
-            ssd1306_draw_string_adafruit(&dev, 15, 40, (uint8_t *)"  2. HAPUS", 12, 0);
+            ssd1306_draw_string_adafruit(0, 15, 25, "> 1. TRANSMIT", WHITE, BLACK);
+            ssd1306_draw_string_adafruit(0, 15, 40, "  2. HAPUS", WHITE, BLACK);
         } else {
-            ssd1306_draw_string_adafruit(&dev, 15, 25, (uint8_t *)"  1. TRANSMIT", 12, 0);
-            ssd1306_draw_string_adafruit(&dev, 15, 40, (uint8_t *)"> 2. HAPUS", 12, 0);
+            ssd1306_draw_string_adafruit(0, 15, 25, "  1. TRANSMIT", WHITE, BLACK);
+            ssd1306_draw_string_adafruit(0, 15, 40, "> 2. HAPUS", WHITE, BLACK);
         }
     } 
     else if (currentIRSavedState == IR_SAVED_STATE_SENDING) {
-        // Layar Polos, Tulisan Gede di Tengah!
-        ssd1306_draw_string_adafruit(&dev, 25, 25, (uint8_t *)"IR SEND!", 16, 0);
+        // Layar Polos, Tulisan di Tengah!
+        ssd1306_draw_string_adafruit(0, 25, 25, "IR SEND!", WHITE, BLACK);
     }
 
-    ssd1306_refresh_gram(&dev);
+    // Refresh layar ID 0, dan force update (true)
+    ssd1306_refresh(0, true); 
 }
 
 void tampilkanMenuIR() {
-    ssd1306_clear_screen(&dev, 0);
+    ssd1306_clear(0);
     char buf[32];
 
     if (currentIRState == IR_STATE_CONFIRM) {
-        ssd1306_draw_string_adafruit(&dev, 10, 10, (uint8_t *)"SNIFF IR SIGNAL", 12, 0);
-        ssd1306_draw_string_adafruit(&dev, 30, 30, (uint8_t *)"YAKIN??", 16, 0);
-        ssd1306_draw_string_adafruit(&dev, 0, 50, (uint8_t *)"[OK] Gas   [X] Back", 12, 0);
+        ssd1306_draw_string_adafruit(0, 10, 10, "SNIFF IR SIGNAL", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 30, 30, "YAKIN??", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 0, 50, "[OK] Gas   [X] Back", WHITE, BLACK);
     } 
     else if (currentIRState == IR_STATE_WAITING) {
-        ssd1306_draw_string_adafruit(&dev, 5, 20, (uint8_t *)"Menunggu", 16, 0);
-        ssd1306_draw_string_adafruit(&dev, 5, 40, (uint8_t *)"sinyal masuk...", 12, 0);
+        ssd1306_draw_string_adafruit(0, 5, 20, "Menunggu", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 5, 40, "sinyal masuk...", WHITE, BLACK);
     } 
     else if (currentIRState == IR_STATE_RESULT) {
-        ssd1306_draw_string_adafruit(&dev, 0, 0, (uint8_t *)"== IR RESULT ==", 12, 0);
+        ssd1306_draw_string_adafruit(0, 0, 0, "== IR RESULT ==", WHITE, BLACK);
         
         snprintf(buf, sizeof(buf), "Type : %s", last_ir_data.protocol);
-        ssd1306_draw_string_adafruit(&dev, 0, 16, (uint8_t *)buf, 12, 0);
+        ssd1306_draw_string_adafruit(0, 0, 16, buf, WHITE, BLACK);
         
         snprintf(buf, sizeof(buf), "Data : %08lX", last_ir_data.hex_code);
-        ssd1306_draw_string_adafruit(&dev, 0, 30, (uint8_t *)buf, 12, 0);
+        ssd1306_draw_string_adafruit(0, 0, 30, buf, WHITE, BLACK);
         
         snprintf(buf, sizeof(buf), "Bits : %d", last_ir_data.bits);
-        ssd1306_draw_string_adafruit(&dev, 0, 44, (uint8_t *)buf, 12, 0);
+        ssd1306_draw_string_adafruit(0, 0, 44, buf, WHITE, BLACK);
         
-        ssd1306_draw_string_adafruit(&dev, 0, 56, (uint8_t *)"> SD Card Saved <", 12, 0);
+        ssd1306_draw_string_adafruit(0, 0, 56, "> SD Card Saved <", WHITE, BLACK);
     }
-    ssd1306_refresh_gram(&dev);
+    
+    // Refresh layar ID 0, dan force update (true)
+    ssd1306_refresh(0, true);
 }
