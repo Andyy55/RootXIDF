@@ -1033,27 +1033,37 @@ int savedRemoteIndex = 0;
 int actionMenuIndex = 0; // 0 = Transmit, 1 = Hapus
 
 // Panggil fungsi ini pas PERTAMA KALI masuk menu Saved Remote
+// Fungsi Parse Data Mentah dari SD Card
 void loadSavedRemotes() {
     totalSavedRemotes = 0;
     FILE* f = fopen("/sdcard/ir_log.txt", "r");
-    if (!f) return; // Kalau kosong/gak ada file
+    if (!f) return; 
 
-    char line[64];
-    // Parsing format: Remote_1|NEC|00FF45BC|32
+    char line[1500]; // Buffer gede buat baca array
     while (fgets(line, sizeof(line), f) && totalSavedRemotes < 20) {
-        char nama[16], proto[8];
-        uint32_t hex;
-        int bits;
-        if (sscanf(line, "%15[^|]|%7[^|]|%lx|%d", nama, proto, &hex, &bits) == 4) {
-            strcpy(listSavedRemotes[totalSavedRemotes].nama, nama);
-            strcpy(listSavedRemotes[totalSavedRemotes].proto, proto);
-            listSavedRemotes[totalSavedRemotes].hex = hex;
-            listSavedRemotes[totalSavedRemotes].bits = bits;
-            totalSavedRemotes++;
+        char* token = strtok(line, "|");
+        if (!token) continue;
+        strcpy(listSavedRemotes[totalSavedRemotes].nama, token);
+        
+        token = strtok(NULL, "|");
+        if (!token) continue;
+        listSavedRemotes[totalSavedRemotes].num_pulses = atoi(token);
+        
+        token = strtok(NULL, "|");
+        char* p_token = strtok(token, ",");
+        int idx = 0;
+        while (p_token != NULL && idx < 200) {
+            listSavedRemotes[totalSavedRemotes].pulses[idx] = atoi(p_token);
+            p_token = strtok(NULL, ",");
+            idx++;
         }
+        totalSavedRemotes++;
     }
     fclose(f);
 }
+
+// --- Potongan buat nampilin layar Hasil ---
+
 
 void tampilkanMenuSavedIR() {
     ssd1306_clear(0); // Bersihin layar (ID 0)
@@ -1124,19 +1134,12 @@ void tampilkanMenuIR() {
     } 
     else if (currentIRState == IR_STATE_RESULT) {
         ssd1306_draw_string_adafruit(0, 0, 0, "== IR RESULT ==", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 0, 16, "Type: RAW CLONER", WHITE, BLACK);
         
-        snprintf(buf, sizeof(buf), "Type : %s", last_ir_data.protocol);
-        ssd1306_draw_string_adafruit(0, 0, 16, buf, WHITE, BLACK);
-        
-        snprintf(buf, sizeof(buf), "Data : %08lX", last_ir_data.hex_code);
+        snprintf(buf, sizeof(buf), "Pulses: %d", last_ir_data.num_pulses);
         ssd1306_draw_string_adafruit(0, 0, 30, buf, WHITE, BLACK);
-        
-        snprintf(buf, sizeof(buf), "Bits : %d", last_ir_data.bits);
-        ssd1306_draw_string_adafruit(0, 0, 44, buf, WHITE, BLACK);
         
         ssd1306_draw_string_adafruit(0, 0, 56, "> SD Card Saved <", WHITE, BLACK);
     }
-    
-    // Refresh layar ID 0, dan force update (true)
     ssd1306_refresh(0, true);
 }
