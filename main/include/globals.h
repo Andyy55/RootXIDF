@@ -35,27 +35,6 @@ typedef struct {
 
 // --- IR SYSTEM GLOBALS ---
 // --- SAVED REMOTE GLOBALS ---
-typedef enum {
-    IR_SAVED_STATE_LIST,
-    IR_SAVED_STATE_ACTION,
-    IR_SAVED_STATE_SENDING
-} ir_saved_state_t;
-
-typedef struct {
-    char nama[16];   // Misal: Remote_1
-    char proto[8];   // Misal: NEC
-    uint32_t hex;
-    int bits;
-} SavedRemote_t;
-
-extern ir_saved_state_t currentIRSavedState;
-extern SavedRemote_t listSavedRemotes[20]; // Batasin 20 aja biar RAM aman
-extern int totalSavedRemotes;
-extern int savedRemoteIndex;
-extern int actionMenuIndex;
-
-void loadSavedRemotes(void); // Fungsi buat baca SD Card ke Array
-void tampilkanMenuSavedIR(void);
 // --- IR SYSTEM GLOBALS ---
 typedef enum {
     IR_STATE_CONFIRM,
@@ -64,24 +43,35 @@ typedef enum {
 } ir_read_state_t;
 
 typedef struct {
-    char protocol[16];
-    uint32_t hex_code;
-    uint8_t bits;
+    uint16_t pulses[200]; // Max 200 kedipan (cukup buat remote TV & AC)
+    int num_pulses;
 } ir_data_t;
-
 
 extern ir_read_state_t currentIRState;
 extern ir_data_t last_ir_data;
 extern bool triggerReadIR;
-// Tambahan buat navigasi list di SD Card
-extern int selectedRemoteIdx;
+
+// --- SAVED REMOTE GLOBALS ---
+typedef enum {
+    IR_SAVED_STATE_LIST,
+    IR_SAVED_STATE_ACTION,
+    IR_SAVED_STATE_SENDING
+} ir_saved_state_t;
+
+typedef struct {
+    char nama[16];   
+    int num_pulses;
+    uint16_t pulses[200]; 
+} SavedRemote_t;
+
+extern ir_saved_state_t currentIRSavedState;
+extern SavedRemote_t listSavedRemotes[20];
 extern int totalSavedRemotes;
+extern int savedRemoteIndex;
+extern int actionMenuIndex;
 
-void transmit_ir(uint32_t hex, int bits); // Fungsi nembak
-void hapus_remote_di_sd(int index);       // Fungsi hapus
+void loadSavedRemotes(void);
 
-void init_ir_system(void);
-void tampilkanMenuIR(void);
 
 // --- VARIABEL ENGINE GAME ---
 extern int baca_highscore_dino();
