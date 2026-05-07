@@ -37,10 +37,8 @@ void tampilkanEvilTwinScreen(void);
 void renderDinoGame(void);
 void tampilkanMenuIR(void);
 void tampilkanMenuSavedIR(void);
+void renderSnakeGame(void); // TAMBAHIN INI BIAR GAK ERROR "IMPLICIT DECLARATION"
 void renderTetrisGame(void);
-void 
-void 
-void 
 
 bool introDone = false; // Penanda intro sudah lewat
 
@@ -121,6 +119,7 @@ typedef struct {
 Star stars[MAX_STARS];
 bool starInit = false;
 
+bool introDone = false; 
 void initStars() {
     for (int i = 0; i < 15; i++) {
         stars[i].x = (rand() % 128) - 64;
@@ -1308,18 +1307,20 @@ void renderSnakeGame() {
         }
 
     } 
-        else { // GAME OVER
-        ssd1306_draw_string_adafruit(0, 20, 20, "G A M E  O V E R", WHITE, BLACK);
+           } 
+    else { // GAME OVER
+        ssd1306_draw_string_adafruit(0, 20, 25, "G A M E  O V E R", WHITE, BLACK);
         
-        // Pilihan Menu
-        ssd1306_draw_string_adafruit(0, 15, 40, "[OK] RESTART", WHITE, BLACK);
-        ssd1306_draw_string_adafruit(0, 15, 50, "[BACK] MENU UTAMA", WHITE, BLACK);
-        
-        // Logika Tombol Back (misal tombol kiri atau bawah)
-        if (tombol_back_ditekan) {
-            currentMenu = MENU_UTAMA;
-            isSnakeInitialized = false;
+        // Cukup tampilin instruksi aja, logikanya udah diatur di input_system.c
+        ssd1306_draw_string_adafruit(0, 15, 45, "[OK] RESTART", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 15, 55, "[LEFT] MENU", WHITE, BLACK);
+
+        if (snakeScore > snakeHighScore) {
+            snakeHighScore = snakeScore;
+            simpan_highscore_snake(snakeHighScore); 
         }
+    
+
     
 
 

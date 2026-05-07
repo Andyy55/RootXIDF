@@ -554,10 +554,7 @@ void handleDinoInput(int btn) {
 
 
 
-// Variabel statis untuk mesin gamenya
-static uint8_t tetris_grid[20][10]; // 20 baris (X), 10 kolom (Y)
-static int t_shape, t_rot, t_x, t_y; 
-static uint32_t lastFallTime = 0;
+
 
 // Data 7 Balok Tetris (Bitmask 16-bit biar enteng)
 static const uint16_t tetris_shapes[7][4] = {
