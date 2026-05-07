@@ -66,7 +66,7 @@ bool triggerConnect = false;
 bool triggerDisconnect = false;
 
 
-
+int batteryPercent = 0;
 int dinoLimit = 500;   
 
 int deauthProgress = 0;
@@ -135,6 +135,7 @@ extern bool init_sdcard(); // Kasih tau compiler fungsinya ada di file lain
         ESP_LOGE("RootX", "Yah, SD Card Gagal... Cek kabel GPIO 3 lu!");
     }
     init_ir_system(); 
+    init_battery();
     xTaskCreatePinnedToCore(
         loopWiFi,     /* Fungsi task (ada di wifi_system.c) */
         "TaskWiFi",   /* Nama task */
