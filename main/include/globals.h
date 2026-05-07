@@ -11,6 +11,12 @@
 #define PIN_RIGHT 39
 #define PIN_OK    38
 
+#define BTN_NONE  0
+#define BTN_UP    1
+#define BTN_DOWN  2
+#define BTN_LEFT  3
+#define BTN_RIGHT 4
+#define BTN_OK    5
 
 #define MODE_IR_SNIFFER 9
 #define MODE_SAVED_REMOTE 10
