@@ -933,7 +933,7 @@ void renderDinoGame() {
     if (dinoState == 0) { // SEDANG MAIN (ATAU SEDANG ANIMASI ENDING)
         
         // --- TRIGGER ENDING DRAMA ---
-        if (dinoScore >= 5000 && endingState == 0) {
+        if (dinoScore >= 200 && endingState == 0) {
             endingState = 1; // Mulai pelan
         }
 
@@ -974,23 +974,33 @@ void renderDinoGame() {
         if (isNight) oled_draw_bitmap(0, (int)skyX, 8, bulan_16, 16, 16, WHITE);
         else oled_draw_bitmap(0, (int)skyX, 8, matahari_16, 16, 16, WHITE);
 
-        // --- SISTEM MUSUH 1 & 2 ---
+             // --- SISTEM MUSUH 1 (Logika Pergerakan) ---
         obstacleX -= (int)gameSpeed;
-        obs2X -= (int)gameSpeed;
-
-        // MUSUH HANYA SPAWN KALAU MASIH STATE 0 (Normal)
-        if (obstacleX < -24 && endingState == 0) {
-            obstacleX = obs2X + 60 + (rand() % 80);
+        if (obstacleX < -24) {
+            // Musuh 1 muncul dari kanan (128)
+            // Tapi kita kasih jarak random dari posisi Musuh 2
+            int jarakAman = obs2X + 50 + (rand() % 90); 
+            // Syarat mutlak: Gak boleh kurang dari 128 biar gak muncul di tengah!
+            obstacleX = (jarakAman > 128) ? jarakAman : 128 + (rand() % 40);
+            
             obstacleType = rand() % 3; 
             if (obstacleType == 2) { int h[] = {15, 32}; obstacleY = h[rand()%2]; } 
             else { obstacleY = (obstacleType == 0) ? 44 : 38; }
         }
-        if (obs2X < -24 && endingState == 0) {
-            obs2X = obstacleX + 60 + (rand() % 80); 
+
+        // --- SISTEM MUSUH 2 (Logika Pergerakan) ---
+        obs2X -= (int)gameSpeed;
+        if (obs2X < -24) {
+            // Musuh 2 juga sama, harus nunggu di belakang Musuh 1
+            int jarakAman2 = obstacleX + 50 + (rand() % 90);
+            // Tetep harus muncul minimal di koordinat 128 (ujung kanan)
+            obs2X = (jarakAman2 > 128) ? jarakAman2 : 128 + (rand() % 40);
+            
             obs2Type = rand() % 3; 
             if (obs2Type == 2) { int h[] = {15, 32}; obs2Y = h[rand()%2]; } 
             else { obs2Y = (obs2Type == 0) ? 44 : 38; }
         }
+
 
         // --- DRAW GROUND ---
         ssd1306_draw_hline(0, 0, 60, 128, WHITE);
@@ -1150,11 +1160,16 @@ void renderDinoGame() {
         ssd1306_draw_string_adafruit(0, 28, 50, "[OK] RESTART", WHITE, BLACK);
         
         // RESET SUTRADARA BUAT GAME BARU
+
+                // RESET SUTRADARA BUAT GAME BARU
         endingState = 0;
         endingTimer = 0;
         tearCount = 0;
         flowerY = 25.0;
         dinoActionX = 15;
+        obstacleX = 128; // Musuh 1 di ujung
+        obs2X = 250;     // Musuh 2 nunggu jauh di luar layar
+        
     }
     
     ssd1306_refresh(0, true);
