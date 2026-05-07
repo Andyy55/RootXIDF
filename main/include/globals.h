@@ -76,7 +76,8 @@ void loadSavedRemotes(void);
 // --- VARIABEL ENGINE GAME ---
 extern int baca_highscore_dino();
 void simpan_highscore_dino(int hs);
-
+extern int baca_highscore_snake();
+void simpan_highscore_snake(int hs);
 
 // --- EXTERN VARIABEL GLOBAL ---
 // --- EXTERN VARIABEL GLOBAL ---
