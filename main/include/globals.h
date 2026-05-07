@@ -86,6 +86,19 @@ extern int batteryPercent;
 void init_battery(void);
 int read_battery_percentage(void);
 
+// --- VARIABEL SNAKE GAME ---
+extern int snakeDir;      // Arah Ular: 0=Kanan, 1=Bawah, 2=Kiri, 3=Atas
+extern int snakeState;    // 0=Main, 1=Game Over
+extern int snakeScore;
+extern int snakeHighScore;
+extern bool isSnakeInitialized;
+
+// --- VARIABEL TETRIS GAME ---
+extern int tetrisState;
+extern int tetrisScore;
+extern int tetrisHighScore;
+extern bool isTetrisInitialized;
+extern void handleTetrisInput(int btn); // Biar input_system bisa manggil
 
 
 extern int dinoLimit;   
