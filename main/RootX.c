@@ -33,6 +33,8 @@ bool triggerTrack = false;
 // --- VARIABEL ENGINE GAME ---
 extern int baca_highscore_dino();
 extern void simpan_highscore_dino(int hs);
+extern int baca_highscore_snake();
+extern void simpan_highscore_snake(int hs);
 
 float rawScore = 0;
 int dinoScore = 0, dinoHighScore = -1;
@@ -55,6 +57,12 @@ char stolenPassword[64] = "";
 bool triggerEvilTwin = false;
 
 
+int tetrisState = 0;
+int tetrisScore = 0;
+int tetrisHighScore = -1;
+bool isTetrisInitialized = false;
+
+
 char inputPassword[64] = {0};
 int cursorPass = 0;
 int statusKoneksi = 0;
@@ -65,6 +73,11 @@ int connRSSI = 0;
 bool triggerConnect = false;
 bool triggerDisconnect = false;
 
+int snakeDir = 0;
+int snakeState = 0;
+int snakeScore = 0;
+int snakeHighScore = -1;
+bool isSnakeInitialized = false;
 
 int batteryPercent = 0;
 int dinoLimit = 500;   
