@@ -66,11 +66,10 @@ void handleJoystick() {
 
     if (btn == BTN_NONE) return; 
 
-    // --- 2. PANGGIL APPMODE ---
-    // Kalau lagi di menu IR Sniffer
     // ==========================================
-    // LOGIKA MENU IR SNIFFER
+    // 2. HANDLER SUB-APLIKASI (DIPISAH & DI-REM)
     // ==========================================
+
     if (appMode == MODE_IR_SNIFFER) { 
         if (btn == BTN_OK || btn == BTN_RIGHT) {
             if (currentIRState == IR_STATE_CONFIRM) {
@@ -78,26 +77,26 @@ void handleJoystick() {
                 triggerReadIR = true; 
             }
             else if (currentIRState == IR_STATE_RESULT) {
-                // Balik ke mode nunggu kalau mau scan ulang
-                currentIRState = IR_STATE_CONFIRM; 
+                currentIRState = IR_STATE_CONFIRM; // Scan ulang
             }
         }
-        else if (btn == BTN_LEFT) { // Hapus BTN_BACK
+        else if (btn == BTN_LEFT) { 
             if (currentIRState == IR_STATE_WAITING) {
                 triggerReadIR = false;
                 currentIRState = IR_STATE_CONFIRM; // Batalin nunggu
-            } else {
-                appMode = 0; // 0 itu balik ke menu awal RootX
+            } 
+            else if (currentIRState == IR_STATE_RESULT) {
+                currentIRState = IR_STATE_CONFIRM; // Kembali dari hasil scan
+            }
+            else {
+                appMode = 0; // Balik ke Submenu dengan benar
             }
         }
+        lastPress = input_millis();
+        return; // <--- KUNCI SAKTI BIAR GAK BOCOR KE MENU UTAMA
     }
 
-    // ==========================================
-    // LOGIKA MENU SAVED REMOTE
-    // ==========================================
     if (appMode == MODE_SAVED_REMOTE) {
-
-        // --- STATE 1: LIST REMOTE ---
         if (currentIRSavedState == IR_SAVED_STATE_LIST) {
             if (btn == BTN_DOWN) {
                 if (savedRemoteIndex < totalSavedRemotes - 1) savedRemoteIndex++;
@@ -108,90 +107,73 @@ void handleJoystick() {
             else if (btn == BTN_OK || btn == BTN_RIGHT) {
                 if (totalSavedRemotes > 0) {
                     currentIRSavedState = IR_SAVED_STATE_ACTION;
-                    actionMenuIndex = 0; // Default kursor ke Transmit
+                    actionMenuIndex = 0; 
                 }
             } 
-            else if (btn == BTN_LEFT) { // Hapus BTN_BACK
-                appMode = 0; // 0 itu balik ke menu awal
+            else if (btn == BTN_LEFT) { 
+                appMode = 0; // Balik ke Submenu
             }
         }
-
-        // --- STATE 2: ACTION MENU ---
         else if (currentIRSavedState == IR_SAVED_STATE_ACTION) {
             if (btn == BTN_DOWN || btn == BTN_UP) {
-                // Bolak-balik index 0 dan 1 doang
                 actionMenuIndex = !actionMenuIndex; 
             } 
-            else if (btn == BTN_LEFT) { // Hapus BTN_BACK
-                currentIRSavedState = IR_SAVED_STATE_LIST; // Batal, balik ke list
+            else if (btn == BTN_LEFT) { 
+                currentIRSavedState = IR_SAVED_STATE_LIST; 
             } 
             else if (btn == BTN_OK) {
                 if (actionMenuIndex == 0) {
-                    // SIKAT TRANSMIT!
                     currentIRSavedState = IR_SAVED_STATE_SENDING;
-                    tampilkanMenuSavedIR(); // Paksa gambar "IR SEND!" langsung detik ini
-                    
-                    // Tembak IR-nya
+                    tampilkanMenuSavedIR(); 
                     transmit_ir_raw(listSavedRemotes[savedRemoteIndex].pulses, listSavedRemotes[savedRemoteIndex].num_pulses);
-
-                    
-                    // Jeda sebentar biar layar "IR SEND!" kelihatan
                     vTaskDelay(pdMS_TO_TICKS(500)); 
-                    
-                    // Balik ke Action Menu
                     currentIRSavedState = IR_SAVED_STATE_ACTION; 
                 } 
                 else if (actionMenuIndex == 1) {
-                    // SIKAT HAPUS!
                     hapus_remote_di_sd(savedRemoteIndex); 
-                    
-                    // Reload array biar list-nya update otomatis
                     loadSavedRemotes(); 
-                    
-                    // Jaga-jaga biar kursor gak bablas
                     if (savedRemoteIndex >= totalSavedRemotes) savedRemoteIndex = totalSavedRemotes - 1;
                     if (savedRemoteIndex < 0) savedRemoteIndex = 0;
-                    
-                    currentIRSavedState = IR_SAVED_STATE_LIST; // Balik ke list
+                    currentIRSavedState = IR_SAVED_STATE_LIST; 
                 }
             }
         }
+        lastPress = input_millis();
+        return; // <--- KUNCI SAKTI 
     }
 
+    // --- HELPER LAINNYA (UDAH AMAN KARENA ADA RETURN) ---
     if (appMode == 1) { handleNavigasiScanner(btn); lastPress = input_millis(); return; }
     if (appMode == 2) { handleNavigasiDeauth(btn);  lastPress = input_millis(); return; }
     if (appMode == 4) { handleNavigasiSpam(btn);    lastPress = input_millis(); return; } 
-     if (appMode == 5) { handleNavigasiScanSta(btn); lastPress = input_millis(); return; }
-     if (appMode == 8) { handleEvilTwinInput(btn); lastPress = input_millis(); return; }
-     if (appMode == 11) { handleDinoInput(btn); lastPress = input_millis(); return; }
+    if (appMode == 5) { handleNavigasiScanSta(btn); lastPress = input_millis(); return; }
+    if (appMode == 8) { handleEvilTwinInput(btn);   lastPress = input_millis(); return; }
+    if (appMode == 11){ handleDinoInput(btn);       lastPress = input_millis(); return; }
     
-     
-
-     if (appMode == 6) {
-if (btn == BTN_LEFT) { scannerState = 4;  appMode = 1; triggerTrack = false; }
-lastPress = input_millis();
+    if (appMode == 6) {
+        if (btn == BTN_LEFT) { scannerState = 4;  appMode = 1; triggerTrack = false; }
+        lastPress = input_millis();
         return;
-}
-     if (appMode == 7) {
+    }
+    
+    if (appMode == 7) {
         if (btn == BTN_LEFT) { 
             esp_wifi_stop(); 
             isDeauthSta = false;
             appMode = 5; 
-    }
-    lastPress = input_millis();
+        }
+        lastPress = input_millis();
         return;
-}
-    // Mode 3 (Brightness)
+    }
+
     if (appMode == 3) {
         if (btn == BTN_UP) {
             if (brightnessValue < 245) brightnessValue += 10;
             setOledBrightness(brightnessValue);
-            printf("Brightness set to: %d\n", brightnessValue);
         }
         else if (btn == BTN_DOWN) {
             if (brightnessValue > 10) brightnessValue -= 10;
             setOledBrightness(brightnessValue);
-            printf("Brightness set to: %d\n", brightnessValue);
         }
         else if (btn == BTN_LEFT) appMode = 0;
         
@@ -199,89 +181,82 @@ lastPress = input_millis();
         return;
     }
 
+    // ==========================================
+    // 3. LOGIKA MENU UTAMA (APPMODE == 0)
+    // ==========================================
+    // DIBUNGKUS IF(0) BIAR MENU LAIN GAK NGERUSAK KURSOR DI SINI!
 
-
-
-
-
-
-
-
-
-    // --- BATAS TAMBAHAN MENU UTAMA ---
-    if (!inSubMenu) {
-        if (btn == BTN_RIGHT) {
-            currentMenu = (currentMenu + 1) % 5; 
-            lastPress = input_millis();
-        }
-        else if (btn == BTN_LEFT) {
-            currentMenu = (currentMenu - 1 + 5) % 5; 
-            lastPress = input_millis();
-        }
-        else if (btn == BTN_OK) {
-            inSubMenu = true; 
-            currentSub = 0;   
-            topMenu = 0;
-            lastPress = input_millis();
-        }
-    } 
-    else {
-        if (btn == BTN_DOWN) {
-            int limitMenu = 0; 
-            if(currentMenu == 0)      limitMenu = 4; 
-            else if(currentMenu == 1) limitMenu = 3;
-            else if(currentMenu == 2) limitMenu = 5;
-            else if(currentMenu == 3) limitMenu = 4;
-            else limitMenu = 1;
-
-            if (currentSub < (limitMenu - 1)) { 
-                currentSub++;
-                if (currentSub >= topMenu + 5) topMenu++;
+    if (appMode == 0) {
+        if (!inSubMenu) {
+            if (btn == BTN_RIGHT) {
+                currentMenu = (currentMenu + 1) % 5; 
             }
-            lastPress = input_millis();
-        }
-        else if (btn == BTN_UP) {
-            if (currentSub > 0) {
-                currentSub--;
-                if (currentSub < topMenu) topMenu--;
+            else if (btn == BTN_LEFT) {
+                currentMenu = (currentMenu - 1 + 5) % 5; 
             }
-            lastPress = input_millis();
-        }
-        else if (btn == BTN_LEFT) {
-            inSubMenu = false; 
-            lastPress = input_millis();
-        }
-        else if (btn == BTN_OK) {
-            if (currentMenu == 0 && currentSub == 0) {
-                appMode = 1;      
-                scannerState = 0; 
-            } else if (currentMenu == 0 && currentSub == 1) {
-                appMode = 1;
-                scannerState = 2;     
-                cursorInScanner = 0;  
-                scrollPosScanner = 0; 
-            } else if (currentMenu == 3 && currentSub == 0) { 
-                appMode = 3; 
-            } else if (currentMenu == 2 && currentSub == 0) { 
-                appMode = MODE_IR_SNIFFER; 
-            } else if (currentMenu == 2 && currentSub == 4) { 
-    loadSavedRemotes(); // <--- INI KUNCI SAKTINYA! BACA SD CARD DULU
-    currentIRSavedState = IR_SAVED_STATE_LIST; // Reset ke menu awal
-    savedRemoteIndex = 0; // Reset kursor ke atas
-    appMode = MODE_SAVED_REMOTE; 
-            }else if (currentMenu == 0 && currentSub == 2) {
-                aktifModeSpam = 1; 
-                appMode = 4;       
-                spamState = 0;
-            } else if (currentMenu == 0 && currentSub == 3) {
-                aktifModeSpam = 2; 
-                appMode = 4;
-                spamState = 0;
-            } else if (currentMenu == 4 && currentSub == 0) {
-                appMode = 11;
+            else if (btn == BTN_OK) {
+                inSubMenu = true; 
+                currentSub = 0;   
+                topMenu = 0;
             }
-            lastPress = input_millis();
+        } 
+        else { // DI DALAM LIST SUBMENU
+            if (btn == BTN_DOWN) {
+                int limitMenu = 0; 
+                if(currentMenu == 0)      limitMenu = 4; 
+                else if(currentMenu == 1) limitMenu = 3;
+                else if(currentMenu == 2) limitMenu = 5;
+                else if(currentMenu == 3) limitMenu = 4;
+                else limitMenu = 1;
+
+                if (currentSub < (limitMenu - 1)) { 
+                    currentSub++;
+                    if (currentSub >= topMenu + 5) topMenu++;
+                }
+            }
+            else if (btn == BTN_UP) {
+                if (currentSub > 0) {
+                    currentSub--;
+                    if (currentSub < topMenu) topMenu--;
+                }
+            }
+            else if (btn == BTN_LEFT) {
+                inSubMenu = false; // BALIK KE LOGO RootX
+            }
+            else if (btn == BTN_OK) {
+                if (currentMenu == 0 && currentSub == 0) {
+                    appMode = 1;      
+                    scannerState = 0; 
+                } else if (currentMenu == 0 && currentSub == 1) {
+                    appMode = 1;
+                    scannerState = 2;     
+                    cursorInScanner = 0;  
+                    scrollPosScanner = 0; 
+                } else if (currentMenu == 3 && currentSub == 0) { 
+                    appMode = 3; 
+                } else if (currentMenu == 2 && currentSub == 0) { 
+                    appMode = MODE_IR_SNIFFER; 
+                    currentIRState = IR_STATE_CONFIRM; // Reset tiap masuk menu
+                } else if (currentMenu == 2 && currentSub == 4) { 
+                    loadSavedRemotes(); // Baca memori SD
+                    currentIRSavedState = IR_SAVED_STATE_LIST; 
+                    savedRemoteIndex = 0; 
+                    appMode = MODE_SAVED_REMOTE; 
+                } else if (currentMenu == 0 && currentSub == 2) {
+                    aktifModeSpam = 1; 
+                    appMode = 4;       
+                    spamState = 0;
+                } else if (currentMenu == 0 && currentSub == 3) {
+                    aktifModeSpam = 2; 
+                    appMode = 4;
+                    spamState = 0;
+                } else if (currentMenu == 4 && currentSub == 0) {
+                    appMode = 11;
+                }
+            }
         }
+        lastPress = input_millis();
+        return;
     }
 }
 
