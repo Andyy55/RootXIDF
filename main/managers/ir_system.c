@@ -20,18 +20,29 @@ bool triggerReadIR = false;
 
 // --- FUNGSI SD CARD (RAW FORMAT) ---
 void simpan_ir_ke_sd() {
+    // --- 1. NGINTIP SD CARD DULU BIAR RAM GAK AMNESIA ---
+    loadSavedRemotes(); 
+
     FILE* f = fopen("/sdcard/ir_log.txt", "a");
-    if (f == NULL) return;
+    if (f == NULL) {
+        ESP_LOGE("IR_SYSTEM", "Gagal buka SD Card!");
+        return;
+    }
     
     // Format: Nama | Jumlah Pulsa | Angka,Angka,Angka...
+    // Karena udah di-load, totalSavedRemotes otomatis nyesuain isi SD Card!
     fprintf(f, "Remote_%d|%d|", totalSavedRemotes + 1, last_ir_data.num_pulses);
+    
     for(int i = 0; i < last_ir_data.num_pulses; i++) {
         fprintf(f, "%d,", last_ir_data.pulses[i]);
     }
     fprintf(f, "\n");
     fclose(f);
-    totalSavedRemotes++; 
+    
+    // --- 2. LOAD LAGI BIAR MENU "SAVED REMOTES" LANGSUNG UPDATE ---
+    loadSavedRemotes(); 
 }
+
 
 void hapus_remote_di_sd(int index_target) {
     FILE* f = fopen("/sdcard/ir_log.txt", "r");

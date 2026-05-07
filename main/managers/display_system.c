@@ -285,6 +285,23 @@ void tampilkanMenuLogo() {
     drawStarfield();
     drawWave();
     
+    read_battery_percentage(); // Baca tiap kali refresh layar
+    char batBuf[10];
+    snprintf(batBuf, sizeof(batBuf), "%d%%", batteryPercent);
+    
+    // Tampilkan Persentase di pojok kanan (X=100, Y=0)
+    ssd1306_draw_string_adafruit(0, 95, 0, batBuf, WHITE, BLACK);
+
+    // --- DRAW ICON BATERAI (10x10) ---
+    // Kotak luar baterai
+    ssd1306_draw_rectangle(0, 116, 0, 10, 6, WHITE); 
+    ssd1306_draw_pixel(0, 126, 2, WHITE); // Kepala baterai
+    
+    // Isi baterai berdasarkan persen
+    int barWidth = batteryPercent / 12; // Skala 100% ke 8 pixel
+    if (barWidth > 8) barWidth = 8;
+    ssd1306_fill_rectangle(0, 117, 1, barWidth, 4, WHITE);
+    
     if(currentMenu == 0)      ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: WIFI", WHITE, BLACK);
     else if(currentMenu == 1) ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: BLE", WHITE, BLACK);
     else if(currentMenu == 2) ssd1306_draw_string_adafruit(0, 0, 0, "#> RootX: IR", WHITE, BLACK);
