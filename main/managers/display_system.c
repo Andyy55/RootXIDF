@@ -35,6 +35,8 @@ void tampilkanTrackScreen(void);
 void tampilkandeauthsta(void);
 void tampilkanEvilTwinScreen(void);
 void renderDinoGame(void);
+void tampilkanMenuIR(void);
+void tampilkanMenuSavedIR(void);
 
 bool introDone = false; // Penanda intro sudah lewat
 
