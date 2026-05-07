@@ -19,7 +19,9 @@
 // Tarik fungsi dari display buat set brightness
 extern void setOledBrightness(uint8_t level);
 extern void tampilkanMenuSavedIR(void);
-extern void transmit_ir(uint32_t hex, int bits);
+
+extern void transmit_ir_raw(uint16_t* pulses, int num_pulses);
+
 extern void loadSavedRemotes(void);
 extern void hapus_remote_di_sd(int index_target);
 
