@@ -127,3 +127,19 @@ void simpan_highscore_dino(int hs) {
     }
 }
 
+void simpan_highscore_snake(int hs) {
+    FILE *f = fopen("/sdcard/shakehi.txt", "w");
+    if (f != NULL) {
+        fprintf(f, "%d", hs);
+        fclose(f);
+    }
+}
+
+int baca_highscore_snake() {
+    FILE *f = fopen("/sdcard/snakehi.txt", "r");
+    if (f == NULL) return 0; // Kalo belum ada, anggap 0
+    int hs = 0;
+    fscanf(f, "%d", &hs);
+    fclose(f);
+    return hs;
+}

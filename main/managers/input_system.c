@@ -30,7 +30,7 @@ extern void hapus_remote_di_sd(int index_target);
 uint32_t input_millis() {
     return (uint32_t)(esp_timer_get_time() / 1000);
 }
-
+static uint32_t pressTime = 0;
 
 
 
@@ -69,6 +69,53 @@ void handleJoystick() {
     // ==========================================
     // 2. HANDLER SUB-APLIKASI (DIPISAH & DI-REM)
     // ==========================================
+    if (appMode == 12) {
+        static uint32_t pressTime = 0; // Buat ngitung lama ditahan
+
+        // 1. LOGIKA BELOK ULAR
+        if (btn == BTN_RIGHT && snakeDir != 2) {
+            snakeDir = 0; // Kanan
+        }
+        else if (btn == BTN_DOWN && snakeDir != 3) {
+            snakeDir = 1; // Bawah
+        }
+        else if (btn == BTN_LEFT && snakeDir != 0 && snakeState == 0) {
+            snakeDir = 2; // Kiri
+        }
+        else if (btn == BTN_UP && snakeDir != 1) {
+            snakeDir = 3; // Atas
+        }
+
+        // 2. LOGIKA KELUAR PAS GAME OVER (Mati)
+        if (snakeState == 1) {
+            if (btn == BTN_OK) { // Restart Game
+                snakeState = 0;     
+                isSnakeInitialized = false; 
+            } else if (btn == BTN_LEFT) { // Keluar Ke Menu Utama
+                appMode = 0; 
+                isSnakeInitialized = false;
+            }
+        }
+
+        // 3. LOGIKA PANIC BUTTON (Tahan OK buat keluar pas lagi main)
+        if (btn == BTN_OK && snakeState == 0) {
+            if (pressTime == 0) pressTime = input_millis(); // Mulai itung
+            
+            // Kalau ditahan lebih dari 1500ms (1.5 detik)
+            if (input_millis() - pressTime > 1500) {
+                appMode = 0; // Langsung mental ke Menu Utama
+                isSnakeInitialized = false;
+                pressTime = 0;
+            }
+        } else {
+            pressTime = 0; // Kalau tombol dilepas, reset itungan
+        }
+
+        lastPress = input_millis(); // Update waktu terakhir dipencet
+        return; 
+    
+
+    }
 
     if (appMode == MODE_IR_SNIFFER) { 
         if (btn == BTN_OK || btn == BTN_RIGHT) {
@@ -86,7 +133,7 @@ void handleJoystick() {
                 currentIRState = IR_STATE_CONFIRM; // Batalin nunggu
             } 
             else if (currentIRState == IR_STATE_RESULT) {
-                currentIRState = IR_STATE_CONFIRM; // Kembali dari hasil scan
+                appMode = 0;// Kembali dari hasil scan
             }
             else {
                 appMode = 0; // Balik ke Submenu dengan benar
@@ -149,6 +196,8 @@ void handleJoystick() {
     if (appMode == 5) { handleNavigasiScanSta(btn); lastPress = input_millis(); return; }
     if (appMode == 8) { handleEvilTwinInput(btn);   lastPress = input_millis(); return; }
     if (appMode == 11){ handleDinoInput(btn);       lastPress = input_millis(); return; }
+    if (appMode == 13) { handleTetrisInput(btn);  lastPress = input_millis();  return;  }
+    
     
     if (appMode == 6) {
         if (btn == BTN_LEFT) { scannerState = 4;  appMode = 1; triggerTrack = false; }
@@ -207,7 +256,7 @@ void handleJoystick() {
                 else if(currentMenu == 1) limitMenu = 3;
                 else if(currentMenu == 2) limitMenu = 5;
                 else if(currentMenu == 3) limitMenu = 4;
-                else limitMenu = 1;
+                else limitMenu = 3;
 
                 if (currentSub < (limitMenu - 1)) { 
                     currentSub++;
@@ -252,7 +301,11 @@ void handleJoystick() {
                     spamState = 0;
                 } else if (currentMenu == 4 && currentSub == 0) {
                     appMode = 11;
-                }
+                } else if (currentMenu == 4 && currentSub == 1) {
+                    appMode = 12;
+                    } else if (currentMenu == 4 && currentSub == 2) {
+                    appMode = 13;
+                    }
             }
         }
         lastPress = input_millis();
@@ -500,3 +553,54 @@ void handleDinoInput(int btn) {
 }
 
 
+
+// Variabel statis untuk mesin gamenya
+static uint8_t tetris_grid[20][10]; // 20 baris (X), 10 kolom (Y)
+static int t_shape, t_rot, t_x, t_y; 
+static uint32_t lastFallTime = 0;
+
+// Data 7 Balok Tetris (Bitmask 16-bit biar enteng)
+static const uint16_t tetris_shapes[7][4] = {
+    {0x0F00, 0x2222, 0x00F0, 0x4444}, // I (Lurus)
+    {0x8E00, 0x6440, 0x0E20, 0x4C40}, // J
+    {0x2E00, 0x4460, 0x0E80, 0xC440}, // L
+    {0xCC00, 0xCC00, 0xCC00, 0xCC00}, // O (Kotak)
+    {0x6C00, 0x4620, 0x06C0, 0x8C40}, // S
+    {0x4E00, 0x4640, 0x0E40, 0x4C40}, // T
+    {0xC600, 0x2640, 0x0C60, 0x4C80}  // Z
+};
+
+// Fungsi Cek Tabrakan
+bool check_tetris_col(int shape, int rot, int px, int py) {
+    uint16_t p = tetris_shapes[shape][rot];
+    for (int i=0; i<16; i++) {
+        if (p & (0x8000 >> i)) {
+            int grid_x = px + (i % 4);
+            int grid_y = py + (i / 4);
+            if (grid_x < 0 || grid_x >= 10 || grid_y >= 20) return true; // Nabrak tembok
+            if (grid_y >= 0 && tetris_grid[grid_y][grid_x]) return true; // Nabrak balok lain
+        }
+    }
+    return false;
+}
+
+// Handler Input biar input_system lu bersih!
+void handleTetrisInput(int btn) {
+    if (tetrisState == 0) {
+        if (btn == BTN_UP) { // Geser ke "Kiri" (Naik di OLED)
+            if (!check_tetris_col(t_shape, t_rot, t_x - 1, t_y)) t_x--;
+        } else if (btn == BTN_DOWN) { // Geser ke "Kanan" (Turun di OLED)
+            if (!check_tetris_col(t_shape, t_rot, t_x + 1, t_y)) t_x++;
+        } else if (btn == BTN_RIGHT) { // Mempercepat jatuh (Soft Drop)
+            if (!check_tetris_col(t_shape, t_rot, t_x, t_y + 1)) t_y++;
+        } else if (btn == BTN_OK) { // Putar Balok
+            int next_rot = (t_rot + 1) % 4;
+            if (!check_tetris_col(t_shape, next_rot, t_x, t_y)) t_rot = next_rot;
+        } else if (btn == BTN_LEFT) { // Keluar Game
+            extern int appMode; appMode = 0; isTetrisInitialized = false;
+        }
+    } else { // Pas Game Over
+        if (btn == BTN_OK) { tetrisState = 0; isTetrisInitialized = false; }
+        else if (btn == BTN_LEFT) { extern int appMode; appMode = 0; isTetrisInitialized = false; }
+    }
+}

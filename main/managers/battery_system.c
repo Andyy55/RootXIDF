@@ -33,7 +33,7 @@ int read_battery_percentage() {
     adc_raw = total_adc / 20;
 
     // 2. Konversi Raw ke Voltase (Resistor divider 1:1)
-    float voltage = (adc_raw / 4095.0) * 8.2;
+    float voltage = (adc_raw / 4095.0) * 7.8;
 
     // 3. Konversi ke Persentase Murni (3.3V - 4.2V)
     float currentPercent = ((voltage - 3.3) / (4.2 - 3.3)) * 100.0;
