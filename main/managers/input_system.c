@@ -265,7 +265,10 @@ lastPress = input_millis();
             } else if (currentMenu == 2 && currentSub == 0) { 
                 appMode = MODE_IR_SNIFFER; 
             } else if (currentMenu == 2 && currentSub == 4) { 
-                appMode = MODE_SAVED_REMOTE; 
+    loadSavedRemotes(); // <--- INI KUNCI SAKTINYA! BACA SD CARD DULU
+    currentIRSavedState = IR_SAVED_STATE_LIST; // Reset ke menu awal
+    savedRemoteIndex = 0; // Reset kursor ke atas
+    appMode = MODE_SAVED_REMOTE; 
             }else if (currentMenu == 0 && currentSub == 2) {
                 aktifModeSpam = 1; 
                 appMode = 4;       
