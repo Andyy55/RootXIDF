@@ -110,8 +110,13 @@ void ir_sniffer_task(void *pvParameter) {
     rmt_rx_event_callbacks_t cbs = { .on_recv_done = rmt_rx_done_cb };
     rmt_rx_register_event_callbacks(rx_chan, &cbs, rx_queue);
 
-    rmt_symbol_word_t raw_symbols[200]; // Buffer gede
-    rmt_receive_config_t receive_config = { }; 
+    rmt_symbol_word_t raw_symbols[200]; 
+    
+    // --- INI OBAT SAKTINYA COK! JANGAN ILANG LAGI ---
+    rmt_receive_config_t receive_config = { 
+        .signal_range_min_ns = 1250,       
+        .signal_range_max_ns = 12000000,   // Timeout 12ms. Kalo diem 12ms, proses!
+    }; 
 
     for(;;) {
         if (currentIRState == IR_STATE_WAITING && triggerReadIR) {
@@ -120,6 +125,7 @@ void ir_sniffer_task(void *pvParameter) {
                 rmt_is_enabled = true;
                 is_receiving = false;
                 xQueueReset(rx_queue); 
+                ESP_LOGW("IR_SYSTEM", "--> RMT NYALA! TEMBAK REMOT SEKARANG! <--");
             }
 
             if (!is_receiving) {
@@ -131,14 +137,19 @@ void ir_sniffer_task(void *pvParameter) {
             rmt_rx_done_event_data_t rx_data;
             if (xQueueReceive(rx_queue, &rx_data, pdMS_TO_TICKS(200)) == pdTRUE) {
                 is_receiving = false; 
-                // KLONING MENTAH DISINI
+                
+                ESP_LOGW("IR_SYSTEM", "--> DAPET %d KEDIPAN! <--", rx_data.num_symbols);
+                
                 extract_raw_pulses(raw_symbols, rx_data.num_symbols);
                 
-                if (last_ir_data.num_pulses > 10) { // Validasi minimal ada 10 kedipan
+                if (last_ir_data.num_pulses > 10) { 
+                    ESP_LOGW("IR_SYSTEM", "SIMPEN KE SD CARD!");
                     simpan_ir_ke_sd();
                     currentIRState = IR_STATE_RESULT;
                     triggerReadIR = false;
                     rmt_disable(rx_chan); rmt_is_enabled = false;
+                } else {
+                    ESP_LOGE("IR_SYSTEM", "CUMA NOISE (SAMPAH)");
                 }
             }
         } else {
@@ -147,6 +158,7 @@ void ir_sniffer_task(void *pvParameter) {
         }
     }
 }
+
 
 void init_ir_system() { 
     gpio_set_pull_mode(IR_RX_PIN, GPIO_PULLUP_ONLY); // Anti hantu
