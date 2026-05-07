@@ -1369,7 +1369,21 @@ bool check_tetris_col(int shape, int rot, int px, int py) {
 }
 
 // Handler Input biar input_system lu bersih!
-
+void handleTetrisInput(int btn) {
+    if (tetrisState == 0) {
+        if (btn == BTN_UP) { if (!check_tetris_col(t_shape, t_rot, t_x - 1, t_y)) t_x--; }
+        else if (btn == BTN_DOWN) { if (!check_tetris_col(t_shape, t_rot, t_x + 1, t_y)) t_x++; }
+        else if (btn == BTN_RIGHT) { if (!check_tetris_col(t_shape, t_rot, t_x, t_y + 1)) t_y++; }
+        else if (btn == BTN_OK) { 
+            int nr = (t_rot + 1) % 4;
+            if (!check_tetris_col(t_shape, nr, t_x, t_y)) t_rot = nr;
+        }
+        else if (btn == BTN_LEFT) { appMode = 0; isTetrisInitialized = false; }
+    } else {
+        if (btn == BTN_OK) { isTetrisInitialized = false; tetrisState = 0; }
+        else if (btn == BTN_LEFT) { appMode = 0; }
+    }
+}
 
 void renderTetrisGame() {
     if (tetrisHighScore == -1) tetrisHighScore = 0; // Ganti fungsi baca SD Card lu nanti
