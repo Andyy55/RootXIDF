@@ -130,7 +130,8 @@ void handleJoystick() {
                     tampilkanMenuSavedIR(); // Paksa gambar "IR SEND!" langsung detik ini
                     
                     // Tembak IR-nya
-                    transmit_ir(listSavedRemotes[savedRemoteIndex].hex, listSavedRemotes[savedRemoteIndex].bits);
+                    transmit_ir_raw(listSavedRemotes[savedRemoteIndex].pulses, listSavedRemotes[savedRemoteIndex].num_pulses);
+
                     
                     // Jeda sebentar biar layar "IR SEND!" kelihatan
                     vTaskDelay(pdMS_TO_TICKS(500)); 
