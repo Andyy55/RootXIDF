@@ -3,7 +3,7 @@
 #include "esp_log.h"
 #include "globals.h"
 
-int batteryPercent = 0;
+ // Wajib biar nyambung ke globals.h
 adc_oneshot_unit_handle_t adc1_handle;
 
 void init_battery() {
@@ -16,25 +16,40 @@ void init_battery() {
         .bitwidth = ADC_BITWIDTH_DEFAULT,
         .atten = ADC_ATTEN_DB_12, // Supaya bisa baca sampe 3.3V
     };
-    // Pin 36 biasanya ADC1_CH0 di ESP32. Kalau di S3 cek pinoutnya ya!
+    // ADC_CHANNEL_0 = GPIO 1 di ESP32-S3
     adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_0, &config);
 }
 
 int read_battery_percentage() {
-    int adc_raw;
-    adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &adc_raw);
+    int adc_raw = 0;
+    long total_adc = 0;
 
-    // Konversi Raw ke Voltase (ESP32-S3 ADC itu 12-bit: 0-4095)
-    // Tegangan di pin = (adc_raw / 4095) * 3.3V
-    // Tegangan Baterai asli = Tegangan di pin * 2 (karena resistor divider 1:1)
+    // 1. MULTISAMPLING: Tembak 20 kali cepet banget terus dirata-rata 
+    // Biar noise listriknya langsung hilang
+    for(int i = 0; i < 20; i++) {
+        adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &adc_raw);
+        total_adc += adc_raw;
+    }
+    adc_raw = total_adc / 20;
+
+    // 2. Konversi Raw ke Voltase (Resistor divider 1:1)
     float voltage = (adc_raw / 4095.0) * 3.3 * 2.0;
 
-    // Map voltase baterai Li-ion: 3.3V (Habis) - 4.2V (Full)
-    int percent = (int)((voltage - 3.3) / (4.2 - 3.3) * 100);
+    // 3. Konversi ke Persentase Murni (3.3V - 4.2V)
+    float currentPercent = ((voltage - 3.3) / (4.2 - 3.3)) * 100.0;
+    if (currentPercent > 100.0) currentPercent = 100.0;
+    if (currentPercent < 0.0) currentPercent = 0.0;
 
-    if (percent > 100) percent = 100;
-    if (percent < 0) percent = 0;
+    // 4. SMOOTHING MATEMATIKA (Anti Goyang tanpa timer)
+    static float smoothedPercent = -1.0; 
+    if (smoothedPercent == -1.0) {
+        smoothedPercent = currentPercent; // Tembakan pertama
+    } else {
+        // Tahan 95% angka lama, tambah 5% angka baru 
+        // Efeknya baterai lu geraknya selaaaaw banget, anti joget
+        smoothedPercent = (smoothedPercent * 0.95) + (currentPercent * 0.05);
+    }
 
-    batteryPercent = percent;
+    batteryPercent = (int)smoothedPercent;
     return batteryPercent;
 }

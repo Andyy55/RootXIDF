@@ -206,7 +206,6 @@ long map(long x, long in_min, long in_max, long out_min, long out_max) {
 const unsigned char* iconListWiFi[] = {
 iconSmall_scan,
 iconSmall_sniff,
-iconSmall_conn,
 iconSmall_spam,
 iconSmall_wifi
 };
@@ -897,9 +896,27 @@ void renderDinoGame() {
     if (dinoHighScore == -1) dinoHighScore = baca_highscore_dino();
     ssd1306_clear(0);
 
-    // --- LOGIC SIANG MALAM (Default: Hitam/Siang) ---
-    // Awal game (Siang) = Hitam. 
-    // Pas skor 1000-1300, 2000-2300, dst = Putih (Malam/Invert).
+    // ==========================================
+    // VARIABEL SUTRADARA (STATE MACHINE ENDING)
+    // ==========================================
+    static int endingState = 0;   
+    /* 0: Main Biasa
+       1: Skor 5000 (Melambat, musuh ilang)
+       2: Berhenti & Zoom Wajah + Bunga
+       3: Flashback 2 Dino + Love
+       4: Zoom Wajah + Nangis 3 Tetes
+       5: Zoom Out, Bunga Jatuh
+       6: Balik Badan & Bunuh Diri
+       7: Terjatuh (Tidur) -> Game Over
+    */
+    static int endingTimer = 0;
+    static float tearY = 22.0;
+    static int tearCount = 0;
+    static int dinoActionX = 15;
+    static float flowerY = 25.0;
+    static int flowerX = 25;
+
+    // --- LOGIC SIANG MALAM ---
     int cycle = dinoScore % 1000;
     bool isNight = (cycle >= 0 && cycle < 300 && dinoScore >= 1000); 
     ssd1306_invert_display(0, isNight);
@@ -909,106 +926,241 @@ void renderDinoGame() {
     snprintf(scoreBuf, sizeof(scoreBuf), "HI %05d  %05d", dinoHighScore, dinoScore);
     ssd1306_draw_string_adafruit(0, 35, 0, scoreBuf, WHITE, BLACK);
 
-    if (dinoState == 0) { // SEDANG MAIN
-        rawScore += (gameSpeed * 0.15);
-        dinoScore = (int)rawScore;
-        gameSpeed = 4.0 + (dinoScore / 500.0);
-        if (gameSpeed > 8.5) gameSpeed = 8.5;
+    static int obs2X = 300; 
+    static int obs2Y = 44;
+    static int obs2Type = 0;
 
-        // Physics Loncat (Gravitasi 1.6 biar mantul cepet)
+    if (dinoState == 0) { // SEDANG MAIN (ATAU SEDANG ANIMASI ENDING)
+        
+        // --- TRIGGER ENDING DRAMA ---
+        if (dinoScore >= 5000 && endingState == 0) {
+            endingState = 1; // Mulai pelan
+        }
+
+        // ==========================================
+        // LOGIKA PERGERAKAN BERDASARKAN STATE
+        // ==========================================
+        if (endingState == 0) {
+            // MAIN NORMAL
+            rawScore += (gameSpeed * 0.15);
+            dinoScore = (int)rawScore;
+            gameSpeed = 4.0 + (dinoScore / 500.0);
+            if (gameSpeed > 8.5) gameSpeed = 8.5;
+        } 
+        else if (endingState == 1) {
+            // 1. SLOWDOWN & BERSIHIN LAYAR
+            gameSpeed -= 0.05; // Makin pelan
+            if (gameSpeed <= 0) {
+                gameSpeed = 0;
+                // Pastikan obstacle udah bener-bener hilang dari layar (X < -24)
+                if (obstacleX < -24 && obs2X < -24) {
+                    endingTimer++;
+                    if (endingTimer > 30) { // Jeda bentar sebelum zoom
+                        endingState = 2; 
+                        endingTimer = 0;
+                    }
+                }
+            }
+        }
+
+        // --- FISIKA LOMPAT DINO ---
         dinoY += dinoVy;
         if (isJumping) dinoVy += 1.6; 
         if (dinoY >= 36) { dinoY = 36; isJumping = false; dinoVy = 0; }
 
         // --- BACKGROUND ---
-        skyX -= 0.5;
+        skyX -= (gameSpeed * 0.1);
         if (skyX < -20) skyX = 128;
-        if (isNight) {
-            oled_draw_bitmap(0, (int)skyX, 8, bulan_16, 16, 16, WHITE);
-        } else {
-            oled_draw_bitmap(0, (int)skyX, 8, matahari_16, 16, 16, WHITE);
-        }
+        if (isNight) oled_draw_bitmap(0, (int)skyX, 8, bulan_16, 16, 16, WHITE);
+        else oled_draw_bitmap(0, (int)skyX, 8, matahari_16, 16, 16, WHITE);
 
-        // --- SISTEM MUSUH ---
-                // --- SISTEM MUSUH (Logika Pergerakan) ---
+        // --- SISTEM MUSUH 1 & 2 ---
         obstacleX -= (int)gameSpeed;
-        if (obstacleX < -24) {
-            obstacleX = 128 + (rand() % 40);
+        obs2X -= (int)gameSpeed;
+
+        // MUSUH HANYA SPAWN KALAU MASIH STATE 0 (Normal)
+        if (obstacleX < -24 && endingState == 0) {
+            obstacleX = obs2X + 60 + (rand() % 80);
             obstacleType = rand() % 3; 
-            
-            if (obstacleType == 2) {
-                int heights[] = {15, 32}; 
-                obstacleY = heights[rand() % 2];
-            } else {
-                obstacleY = (obstacleType == 0) ? 44 : 38;
-            }
+            if (obstacleType == 2) { int h[] = {15, 32}; obstacleY = h[rand()%2]; } 
+            else { obstacleY = (obstacleType == 0) ? 44 : 38; }
         }
-
-        // --- TAMBAHKAN KODE INI UNTUK MENGGAMBAR MUSUH ---
-        if (obstacleType == 0) {
-            // Kaktus Kecil (16x16)
-            oled_draw_bitmap(0, (int)obstacleX, 44, kaktus_16, 16, 16, WHITE);
-        } 
-        else if (obstacleType == 1) {
-            // Kaktus Besar/Triple
-            // Note: kaktus_besar di datamu lebarnya 24px (3 byte per baris)
-            oled_draw_bitmap(0, (int)obstacleX, 38, kaktus_besar, 24, 24, WHITE);
-        } 
-        else if (obstacleType == 2) {
-            // Burung (Ptero) - Animasi ngepak sayap
-            const unsigned char* pteroFrame = ((millis() / 200) % 2 == 0) ? ptero_up : ptero_down;
-            oled_draw_bitmap(0, (int)obstacleX, obstacleY, pteroFrame, 16, 16, WHITE);
+        if (obs2X < -24 && endingState == 0) {
+            obs2X = obstacleX + 60 + (rand() % 80); 
+            obs2Type = rand() % 3; 
+            if (obs2Type == 2) { int h[] = {15, 32}; obs2Y = h[rand()%2]; } 
+            else { obs2Y = (obs2Type == 0) ? 44 : 38; }
         }
-
 
         // --- DRAW GROUND ---
-        // --- DRAW GROUND (TANAH DINAMIS) ---
-        // 1. Garis horizontal utama tanah
         ssd1306_draw_hline(0, 0, 60, 128, WHITE);
+        if (gameSpeed > 0) {
+            for (int i = 0; i < 128; i += 16) {
+                int scrollX = (i - ((int)rawScore % 128));
+                if (scrollX < 0) scrollX += 128;
+                ssd1306_draw_pixel(0, scrollX, 62, WHITE);
+                ssd1306_draw_pixel(0, (scrollX + 7) % 128, 61, WHITE);
+                if (i % 32 == 0) ssd1306_draw_hline(0, scrollX, 61, 4, WHITE);
+            }
+        }
 
-        // 2. Efek tekstur tanah (Bintik/Pasir) yang gerak sesuai kecepatan
-        for (int i = 0; i < 128; i += 16) {
-            // Kita pake modulo agar posisinya looping terus dari kanan ke kiri
-            int scrollX = (i - ((int)rawScore % 128));
-            if (scrollX < 0) scrollX += 128;
 
-            // Gambar beberapa titik/garis kecil sebagai tekstur tanah di bawah garis
-            ssd1306_draw_pixel(0, scrollX, 62, WHITE);
-            ssd1306_draw_pixel(0, (scrollX + 7) % 128, 61, WHITE);
+        // ==========================================
+        // SUTRADARA: RENDER SCENE (THE MOVIE)
+        // ==========================================
+        
+        if (endingState == 0 || endingState == 1) {
+            // SCENE: GAMEPLAY NORMAL
+            const unsigned char* pteroFrame = ((millis() / 200) % 2 == 0) ? ptero_up : ptero_down;
+            if (obstacleType == 0) oled_draw_bitmap(0, (int)obstacleX, 44, kaktus_16, 16, 16, WHITE);
+            else if (obstacleType == 1) oled_draw_bitmap(0, (int)obstacleX, 38, kaktus_besar, 24, 24, WHITE);
+            else if (obstacleType == 2) oled_draw_bitmap(0, (int)obstacleX, obstacleY, pteroFrame, 16, 16, WHITE);
             
-            // Tambah garis kecil biar lebih mirip Chrome
-            if (i % 32 == 0) {
-                ssd1306_draw_hline(0, scrollX, 61, 4, WHITE);
+            if (obs2Type == 0) oled_draw_bitmap(0, (int)obs2X, 44, kaktus_16, 16, 16, WHITE);
+            else if (obs2Type == 1) oled_draw_bitmap(0, (int)obs2X, 38, kaktus_besar, 24, 24, WHITE);
+            else if (obs2Type == 2) oled_draw_bitmap(0, (int)obs2X, obs2Y, pteroFrame, 16, 16, WHITE);
+
+            const unsigned char* dinoFrame = (dinoY < 36) ? dino_lari1 : (((millis()/100)%2==0) ? dino_lari1 : dino_lari2);
+            if (gameSpeed == 0) dinoFrame = dino_lari1; // Kalo berhenti, frame diam
+            oled_draw_bitmap(0, 15, (int)dinoY, dinoFrame, 24, 24, WHITE);
+        }
+        
+        else if (endingState == 2) {
+            // SCENE: ZOOM WAJAH + BUNGA
+            ssd1306_draw_rectangle(0, 40, 10, 40, 40, WHITE); // Muka Zoom
+            ssd1306_draw_pixel(0, 70, 20, WHITE); // Mata
+            ssd1306_draw_string_adafruit(0, 50, 35, "*", WHITE, BLACK); // Bunga
+
+            endingTimer++;
+            if (endingTimer > 80) { endingState = 3; endingTimer = 0; }
+        }
+
+        else if (endingState == 3) {
+            // SCENE: FLASHBACK 2 DINO + LOVE
+            oled_draw_bitmap(0, 30, 36, dino_lari1, 24, 24, WHITE); // Dino 1 (Kiri)
+            oled_draw_bitmap(0, 70, 36, dino_lari1, 24, 24, WHITE); // Dino 2 (Kanan)
+            ssd1306_draw_string_adafruit(0, 58, 30, "<3", WHITE, BLACK); // Love
+
+            endingTimer++;
+            if (endingTimer > 100) { endingState = 4; endingTimer = 0; tearY = 22.0; tearCount = 0; }
+        }
+
+        else if (endingState == 4) {
+            // SCENE: ZOOM WAJAH + NANGIS 3 TETES PELAN
+            ssd1306_draw_rectangle(0, 40, 10, 40, 40, WHITE); 
+            ssd1306_draw_pixel(0, 70, 20, WHITE); // Mata
+            
+            // Logika Netes Pelan
+            tearY += 0.4; // Kecepatan air mata (makin kecil makin pelan)
+            if (tearY > 40.0) { // Kalo udah nyampe dagu
+                tearY = 22.0; // Balik ke mata
+                tearCount++;
+            }
+            ssd1306_draw_pixel(0, 70, (int)tearY, WHITE); // Gambar air mata
+            
+            if (tearCount >= 3) { 
+                endingState = 5; 
+                endingTimer = 0;
+                // Setup buat scene bunuh diri
+                obstacleX = 100; // Obstacle muncul di depan/belakang buat ditabrak
+                obstacleType = 1; // Kaktus Gede biar dramatis
+                dinoActionX = 15;
+                flowerX = 25;
+                flowerY = 40.0; // Bunga di tangan
             }
         }
 
+        else if (endingState >= 5) {
+            // SCENE: ZOOM OUT, JATUHIN BUNGA, BUNUH DIRI
+            
+            // Gambar Obstacle Kematian
+            oled_draw_bitmap(0, (int)obstacleX, 38, kaktus_besar, 24, 24, WHITE);
+            
+            // Bunga dijatuhin ke tanah
+            if (endingState == 5) {
+                if (flowerY < 55.0) flowerY += 1.0; // Bunga jatuh
+                else {
+                    endingTimer++;
+                    if (endingTimer > 30) endingState = 6; // Jeda bentar terus lari
+                }
+            }
+            ssd1306_draw_string_adafruit(0, flowerX, (int)flowerY, "*", WHITE, BLACK); // Bunga
 
-        // --- DRAW DINO ---
-        const unsigned char* dinoFrame = (dinoY < 36) ? dino_lari1 : (((millis()/100)%2==0) ? dino_lari1 : dino_lari2);
-        oled_draw_bitmap(0, 15, (int)dinoY, dinoFrame, 24, 24, WHITE);
+            if (endingState == 6) {
+                // Lari tubrukin diri
+                dinoActionX += 3; // Kecepatan lari nyamperin maut
+                if (dinoActionX + 20 >= obstacleX) {
+                    // TABRAKAN!
+                    endingState = 7;
+                    endingTimer = 0;
+                }
+            }
 
-        // --- COLLISION DETECTION (HITBOX PRESISI) ---
-        if (obstacleX > 12 && obstacleX < 30) { // Area horizontal Dino
-            int d_top = dinoY + 4;
-            int d_bottom = dinoY + 20;
-            int o_top, o_bottom;
+            // Gambar Dino (Kalo state 7, dinonya agak turun kayak tidur/terjatuh)
+            int renderY = (endingState == 7) ? 46 : 36;
+            oled_draw_bitmap(0, dinoActionX, renderY, dino_lari1, 24, 24, WHITE);
 
-            if (obstacleType == 0) { o_top = 44; o_bottom = 60; }
-            else if (obstacleType == 1) { o_top = 38; o_bottom = 60; }
-            else { o_top = obstacleY + 4; o_bottom = obstacleY + 12; } // Burung lebih tipis
-
-            if (!(d_bottom < o_top || d_top > o_bottom)) {
-                dinoState = 1; 
-                ssd1306_invert_display(0, false); // Balikin item pas mati
+            if (endingState == 7) {
+                endingTimer++;
+                if (endingTimer > 50) { // Jeda bentar pas tiduran, terus GAME OVER
+                    dinoState = 1; 
+                    ssd1306_invert_display(0, false);
+                    
+                    // --- SAVE HIGHSCORE ---
+                    if (dinoScore > dinoHighScore) {
+                        dinoHighScore = dinoScore;
+                        simpan_highscore_dino(dinoHighScore); 
+                    }
+                }
             }
         }
+
+        // ==========================================
+        // COLLISION DETECTION (HANYA BUAT GAMEPLAY NORMAL)
+        // ==========================================
+        if (endingState == 0) {
+            // Cek Musuh 1
+            if (obstacleX > 12 && obstacleX < 30) { 
+                int d_top = dinoY + 4; int d_bottom = dinoY + 20;
+                int o_top = (obstacleType == 2) ? obstacleY + 4 : ((obstacleType == 0) ? 44 : 38);
+                int o_bottom = (obstacleType == 2) ? obstacleY + 12 : 60;
+                if (!(d_bottom < o_top || d_top > o_bottom)) { 
+                    dinoState = 1; ssd1306_invert_display(0, false); 
+                    if (dinoScore > dinoHighScore) { dinoHighScore = dinoScore; simpan_highscore_dino(dinoHighScore); }
+                }
+            }
+            // Cek Musuh 2
+            if (obs2X > 12 && obs2X < 30) { 
+                int d_top = dinoY + 4; int d_bottom = dinoY + 20;
+                int o_top = (obs2Type == 2) ? obs2Y + 4 : ((obs2Type == 0) ? 44 : 38);
+                int o_bottom = (obs2Type == 2) ? obs2Y + 12 : 60;
+                if (!(d_bottom < o_top || d_top > o_bottom)) { 
+                    dinoState = 1; ssd1306_invert_display(0, false); 
+                    if (dinoScore > dinoHighScore) { dinoHighScore = dinoScore; simpan_highscore_dino(dinoHighScore); }
+                }
+            }
+        }
+
     } 
-    else { // GAME OVER
+    else { 
+        // ==========================================
+        // GAME OVER SCREEN
+        // ==========================================
         ssd1306_draw_string_adafruit(0, 20, 25, "G A M E  O V E R", WHITE, BLACK);
         ssd1306_draw_string_adafruit(0, 28, 50, "[OK] RESTART", WHITE, BLACK);
+        
+        // RESET SUTRADARA BUAT GAME BARU
+        endingState = 0;
+        endingTimer = 0;
+        tearCount = 0;
+        flowerY = 25.0;
+        dinoActionX = 15;
     }
+    
     ssd1306_refresh(0, true);
 }
+
+
 
 void tampilkanEvilTwinScreen() {
     ssd1306_clear(0);
