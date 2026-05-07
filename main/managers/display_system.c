@@ -1197,7 +1197,9 @@ void tampilkanMenuIR() {
 void renderSnakeGame() {
     // Kalau lu punya fungsi simpan/baca sd card khusus snake, taruh sini.
     // Sementara kita set manual kalo belum ada.
-    if (snakeHighScore == -1) snakeHighScore = 0; 
+    
+        if (snakeHighScore == -1) snakeHighScore = baca_highscore_snake();
+    
 
     // Array buat nyimpen koordinat badan Ular (Maksimal panjang 100)
     static int snakeX[100];
