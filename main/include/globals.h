@@ -81,6 +81,12 @@ void simpan_highscore_dino(int hs);
 // --- EXTERN VARIABEL GLOBAL ---
 // --- EXTERN VARIABEL GLOBAL ---
 
+// --- BATTERY GLOBALS ---
+extern int batteryPercent;
+void init_battery(void);
+int read_battery_percentage(void);
+
+
 
 extern int dinoLimit;   
 
