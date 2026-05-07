@@ -9,12 +9,7 @@
 #include "ssd1306.h"
 
 // Pengganti String biar enteng dan cepat!
-#define BTN_NONE  0
-#define BTN_UP    1
-#define BTN_DOWN  2
-#define BTN_LEFT  3
-#define BTN_RIGHT 4
-#define BTN_OK    5
+
 
 // Tarik fungsi dari display buat set brightness
 extern void setOledBrightness(uint8_t level);
