@@ -85,10 +85,10 @@ void handleJoystick() {
         if (snakeState == 1) {
             if (btn == BTN_OK) { // Restart Game
                 snakeState = 0;     
-                isInitialized = false; 
+                isSnakeInitialized = false; 
             } else if (btn == BTN_LEFT) { // Keluar Ke Menu Utama
                 appMode = 0; 
-                isInitialized = false;
+                isSnakeInitialized = false;
             }
         }
 
@@ -99,7 +99,7 @@ void handleJoystick() {
             // Kalau ditahan lebih dari 1500ms (1.5 detik)
             if (input_millis() - pressTime > 1500) {
                 appMode = 0; // Langsung mental ke Menu Utama
-                isInitialized = false;
+                isSnakeInitialized = false;
                 pressTime = 0;
             }
         } else {

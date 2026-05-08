@@ -1222,7 +1222,7 @@ void renderSnakeGame() {
     // --- 1. RESET / INIT PAS BARU MULAI ---
         // --- 1. RESET / INIT PAS BARU MULAI ---
 
-    if (!isInitialized) {
+    if (!isSnakeInitialized) {
         snakeX[0] = 10; snakeY[0] = 8; // Kepala
         snakeX[1] = 9;  snakeY[1] = 8; // Badan 1
         snakeX[2] = 8;  snakeY[2] = 8; // Ekor
@@ -1235,7 +1235,7 @@ void renderSnakeGame() {
         appleX = rand() % 32;
         appleY = 3 + (rand() % 13);
         
-        isInitialized = true;
+        isSnakeInitialized = true;
     }
 
     ssd1306_clear(0);
