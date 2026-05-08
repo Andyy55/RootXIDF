@@ -143,3 +143,20 @@ int baca_highscore_snake() {
     fclose(f);
     return hs;
 }
+
+void simpan_highscore_tetris(int hs) {
+    FILE *f = fopen("/sdcard/tetrishi.txt", "w");
+    if (f != NULL) {
+        fprintf(f, "%d", hs);
+        fclose(f);
+    }
+}
+
+int baca_highscore_tetris() {
+    FILE *f = fopen("/sdcard/tetrishi.txt", "r");
+    if (f == NULL) return 0; // Kalo belum ada, anggap 0
+    int hs = 0;
+    fscanf(f, "%d", &hs);
+    fclose(f);
+    return hs;
+}

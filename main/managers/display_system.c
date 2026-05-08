@@ -22,6 +22,8 @@ extern void tampilkanIntroAnime(void);
 extern void tampilkanTeksSplash(void);
 void tampilkanMenuLogo(void);
 void tampilkanMenuUtama(void);
+extern int baca_highscore_tetris();
+extern void simpan_highscore_tetris(int hs);
 
 void tampilkanMenuLogo(void);
 void tampilkanMenuUtama(void);
@@ -957,25 +959,27 @@ void renderDinoGame() {
         obs1X -= (int)gameSpeed;
         obs2X -= (int)gameSpeed;
 
-        // Reset Musuh 1
+               // Reset Musuh 1
         if (obs1X < -24) {
-            int gap = 60 + (rand() % 100);
-            // KUNCI: Harus lebih besar dari 128 biar gak muncul di tengah!
-            obs1X = (obs2X + gap > 130) ? (obs2X + gap) : (130 + (rand() % 50));
+            obs1X = obs2X + 80 + (rand() % 60);
+            // KUNCI ANTI TELEPORT: Kalau hasil rumusnya malah di dalem layar, PAKSA ke ujung!
+            if (obs1X < 130) obs1X = 130 + (rand() % 40); 
+            
             obs1Type = rand() % 3; 
-            if (obs1Type == 2) { int h[] = {15, 32}; obs1Y = h[rand()%2]; } 
+            if (obs1Type == 2) { int h[] = {20, 32}; obs1Y = h[rand()%2]; } 
             else { obs1Y = (obs1Type == 0) ? 44 : 38; }
         }
 
         // Reset Musuh 2
         if (obs2X < -24) {
-            int gap = 60 + (rand() % 100);
-            // KUNCI: Sama, harus nunggu Musuh 1 lewat jauh dulu
-            obs2X = (obs1X + gap > 130) ? (obs1X + gap) : (130 + (rand() % 50));
+            obs2X = obs1X + 80 + (rand() % 60);
+            if (obs2X < 130) obs2X = 130 + (rand() % 40);
+            
             obs2Type = rand() % 3; 
-            if (obs2Type == 2) { int h[] = {15, 32}; obs2Y = h[rand()%2]; } 
+            if (obs2Type == 2) { int h[] = {20, 32}; obs2Y = h[rand()%2]; } 
             else { obs2Y = (obs2Type == 0) ? 44 : 38; }
         }
+
 
         // --- DRAW GROUND ---
         ssd1306_draw_hline(0, 0, 60, 128, WHITE);
@@ -1199,7 +1203,7 @@ void renderSnakeGame() {
     // Sementara kita set manual kalo belum ada.
     
         if (snakeHighScore == -1) snakeHighScore = baca_highscore_snake();
-    
+    ssd1306_clear(0);
 
     // Array buat nyimpen koordinat badan Ular (Maksimal panjang 100)
     static int snakeX[100];
@@ -1216,6 +1220,8 @@ void renderSnakeGame() {
     int moveInterval = 120; 
 
     // --- 1. RESET / INIT PAS BARU MULAI ---
+        // --- 1. RESET / INIT PAS BARU MULAI ---
+
     if (!isInitialized) {
         snakeX[0] = 10; snakeY[0] = 8; // Kepala
         snakeX[1] = 9;  snakeY[1] = 8; // Badan 1
@@ -1386,7 +1392,9 @@ void handleTetrisInput(int btn) {
 }
 
 void renderTetrisGame() {
-    if (tetrisHighScore == -1) tetrisHighScore = 0; // Ganti fungsi baca SD Card lu nanti
+    if (tetrisHighScore == -1) tetrisHighScore = baca_highscore_tetris();
+    ssd1306_clear(0);
+
 
     if (!isTetrisInitialized) {
         memset(tetris_grid, 0, sizeof(tetris_grid));
@@ -1439,36 +1447,45 @@ void renderTetrisGame() {
             }
         }
 
-        // --- RENDER VISUAL MIRING ---
-        // Gambar Tembok Arena (Sumbu X: 0-120, Sumbu Y: 0-60)
-        ssd1306_draw_hline(0, 0, 60, 120, WHITE); // Garis bawah arena (karena layarnya miring)
-        ssd1306_draw_vline(0, 120, 0, 60, WHITE); // Garis kanan (Tanah tempat balok numpuk)
+             // --- RENDER VISUAL TETRIS VERTIKAL ---
+        // Grid layar kita geser ke Y=14 biar ada ruang kosong buat teks di Y=0 sampai 12
+        ssd1306_draw_hline(0, 0, 13, 102, WHITE);  // Border Kiri
+        ssd1306_draw_hline(0, 0, 63, 102, WHITE);  // Border Kanan
+        ssd1306_draw_vline(0, 102, 13, 50, WHITE); // Border Bawah (Tanah)
 
-        // Gambar tumpukan balok
         for (int y = 0; y < 20; y++) {
             for (int x = 0; x < 10; x++) {
                 if (tetris_grid[y][x]) {
-                    ssd1306_draw_rectangle(0, y * 6, x * 6, 5, 5, WHITE); // Kotak 5x5
+                    ssd1306_draw_rectangle(0, y * 5, 14 + (x * 5), 5, 5, WHITE); 
                 }
             }
         }
 
-        // Gambar balok yang lagi jatuh
         uint16_t p = tetris_shapes[t_shape][t_rot];
         for (int i=0; i<16; i++) {
             if (p & (0x8000 >> i)) {
                 int x = t_x + (i % 4); int y = t_y + (i / 4);
-                ssd1306_draw_rectangle(0, y * 6, x * 6, 5, 5, WHITE);
+                ssd1306_draw_rectangle(0, y * 5, 14 + (x * 5), 5, 5, WHITE);
             }
         }
 
-        // Gambar Teks Skor (Normal biar gak pusing bacanya pas miring)
-        char sc[16]; snprintf(sc, sizeof(sc), "S:%d", tetrisScore);
-        ssd1306_draw_string_adafruit(0, 0, 54, sc, WHITE, BLACK);
-
     } else { // GAME OVER
         ssd1306_draw_string_adafruit(0, 20, 25, "GAME OVER", WHITE, BLACK);
-        if (tetrisScore > tetrisHighScore) tetrisHighScore = tetrisScore;
+        
+                if (tetrisScore > tetrisHighScore) {
+            tetrisHighScore = tetrisScore;
+            simpan_highscore_tetris(tetrisHighScore); 
+        }
     }
+
+    // --- TEKS SKOR (Horizontal Bawaan OLED) ---
+    // Posisinya di Y=2 (Ruang kosong di sebelah kiri arena kalau dipegang vertikal)
+    char sc[32]; 
+    snprintf(sc, sizeof(sc), "HI:%d  SCR:%d", tetrisHighScore, tetrisScore);
+    ssd1306_draw_string_adafruit(0, 0, 2, sc, WHITE, BLACK);
+
+    
+
+    
     ssd1306_refresh(0, true);
 }
