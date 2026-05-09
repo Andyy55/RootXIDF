@@ -14,7 +14,7 @@
 #include <sys/unistd.h>
 #include <sys/stat.h>
 
-#include <sys/statvfs.h> // Wajib buat baca kapasitas memori
+#include <sys/statvfs.h> 
 
 
 
@@ -46,11 +46,11 @@ void tampilkanEvilTwinScreen(void);
 void renderDinoGame(void);
 void tampilkanMenuIR(void);
 void tampilkanMenuSavedIR(void);
-void renderSnakeGame(void); // TAMBAHIN INI BIAR GAK ERROR "IMPLICIT DECLARATION"
+void renderSnakeGame(void); 
 void renderTvBGone(void);
 void renderTetrisGame(void);
 
-bool introDone = false; // Penanda intro sudah lewat
+bool introDone = false; 
 
 
 void init_joystick() {
@@ -64,7 +64,7 @@ void init_joystick() {
 void task_display(void *pvParameters) {
 init_joystick();
 if (ssd1306_init(0, 9, 8)) {
-    vTaskDelay(pdMS_TO_TICKS(100)); // <--- KUNCI SAKTI: Kasih napas 100ms
+    vTaskDelay(pdMS_TO_TICKS(100)); 
     ssd1306_select_font(0, 0);
     ssd1306_clear(0);
     ssd1306_refresh(0, true);
