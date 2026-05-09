@@ -40,6 +40,12 @@ typedef struct {
 } StationInfo;
 
 // --- IR SYSTEM GLOBALS ---
+// --- VARIABEL TV-B-GONE ---
+extern int tvbgoneState;    // 0: Menu, 1: Firing
+extern int tvbgoneMenuIdx;  // 0: NA, 1: EU, 2: ALL
+extern int tvbgoneProgress; // Kode ke-berapa yang lagi ditembak
+extern int tvbgoneTotal;    // Total kode yang harus ditembak
+
 // --- SAVED REMOTE GLOBALS ---
 // --- IR SYSTEM GLOBALS ---
 typedef enum {
@@ -75,6 +81,14 @@ extern SavedRemote_t listSavedRemotes[20];
 extern int totalSavedRemotes;
 extern int savedRemoteIndex;
 extern int actionMenuIndex;
+// --- VARIABEL FILE EXPLORER ---
+#define MAX_FILES 20  // Maksimal 20 file biar RAM ESP32 lu gak jebol
+extern char sdFileNames[MAX_FILES][32];
+extern int sdTotalFiles;
+extern int sdFileCursor;
+extern int sdFileScroll;
+extern int sdFileState; // 0: List, 1: Confirm Delete
+extern bool isFileExpInit;
 
 void loadSavedRemotes(void);
 
