@@ -176,7 +176,7 @@ void init_ir_system() {
     gpio_set_pull_mode(IR_RX_PIN, GPIO_PULLUP_ONLY); // Anti hantu
     
     xTaskCreatePinnedToCore(
-    ir_sniff_task, 
+    ir_sniffer_task, 
     "ir_sniff", 
     8192,         // Naikin angkanya di sini (dalam Bytes)
     NULL, 
