@@ -16,8 +16,7 @@
 #include <sys/statvfs.h> // Wajib buat baca kapasitas memori
 
 
-#define WHITE 1
-#define BLACK 0
+
 #define MAX_STARS 15
 
 void renderFileExplorer(void);
@@ -1245,7 +1244,7 @@ void renderSnakeGame() {
     static int appleY = 8;
     
     static uint32_t lastMoveTime = 0;
-    static bool isInitialized = false;
+    static bool isSnakeInitialized = false;
 
     // Kecepatan Ular (Makin kecil makin ngebut, misal 100ms per gerak)
     int moveInterval = 120; 

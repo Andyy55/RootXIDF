@@ -8,12 +8,15 @@
 #include <string.h>
 #include "ssd1306.h"
 #include "tvbgone_engine.h"
+#include <unistd.h>
 
 // Ambil array misterius dari WORLDcodes.c
 extern const struct IrCode* const NApowerCodes[];
 extern const struct IrCode* const EUpowerCodes[];
 extern const uint8_t num_NAcodes;
 extern const uint8_t num_EUcodes;
+extern TaskHandle_t tvbgoneTaskHandle;
+extern void tvbgone_fire_task(void *pvParameters);
 
 // Pengganti String biar enteng dan cepat!
 
@@ -32,7 +35,7 @@ extern void hapus_remote_di_sd(int index_target);
 uint32_t input_millis() {
     return (uint32_t)(esp_timer_get_time() / 1000);
 }
-static uint32_t pressTime = 0;
+
 
 
 
