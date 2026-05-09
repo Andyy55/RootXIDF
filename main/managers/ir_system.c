@@ -11,6 +11,7 @@
 #include "esp_log.h"
 #include "globals.h"
 
+
 #define IR_RX_PIN GPIO_NUM_4  
 #define IR_TX_PIN GPIO_NUM_5
 
@@ -173,5 +174,14 @@ void ir_sniffer_task(void *pvParameter) {
 
 void init_ir_system() { 
     gpio_set_pull_mode(IR_RX_PIN, GPIO_PULLUP_ONLY); // Anti hantu
-    xTaskCreate(ir_sniffer_task, "ir_sniff", 4096, NULL, 5, NULL); 
+    
+    xTaskCreatePinnedToCore(
+    ir_sniff_task, 
+    "ir_sniff", 
+    8192,         // Naikin angkanya di sini (dalam Bytes)
+    NULL, 
+    3,            // Prioritas jangan ketinggian biar nggak ganggu sistem
+    NULL, 
+    0             // Tetep di Core 0 sesuai kemauan lu
+);
 }

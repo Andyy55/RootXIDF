@@ -232,7 +232,7 @@ void handleJoystick() {
             if (btn == BTN_LEFT || btn == BTN_OK) {
                 appMode = 16; // Balik ke SD Manager
             }
-        } 
+        }
         else {
             if (sdFileState == 0) { // MODE BROWSE
                 if (btn == BTN_DOWN) {
@@ -285,9 +285,9 @@ void handleJoystick() {
                         sdFileScroll = 0;
                         isFileExpInit = false; // Paksa scan ulang setelah mundur
                     }
-                
+                }
 
-            } 
+            }
             else if (sdFileState == 1) { // MODE KONFIRMASI DELETE
                 if (btn == BTN_LEFT) {
                     sdFileState = 0; // Batal delete
@@ -522,7 +522,7 @@ void handleJoystick() {
     }
 }
 
-}
+
 
 
 
