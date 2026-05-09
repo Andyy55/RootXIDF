@@ -227,6 +227,9 @@ void handleJoystick() {
         extern int sdFileCursor, sdFileScroll, sdTotalFiles, sdFileState;
         extern bool isFileExpInit;
         extern char sdFileNames[MAX_FILES][32];
+        struct stat st;
+        char full_path[512];
+        extern char currentPath[256];
 
         if (sdTotalFiles == 0) {
             if (btn == BTN_LEFT || btn == BTN_OK) {
@@ -251,9 +254,9 @@ void handleJoystick() {
                 } 
                                 else if (btn == BTN_OK) {
                     // --- LOGIKA CEK FOLDER / FILE ---
-                    struct stat st;
-                    char full_path[512];
-                    extern char currentPath[256]; // Pastiin lu udah bikin variabel string currentPath di display_system.c!
+                    
+                    
+                    
                     
                     // Gabungin path sekarang dengan nama file/folder yang dipilih
                     snprintf(full_path, sizeof(full_path), "%s/%s", currentPath, sdFileNames[sdFileCursor]);
@@ -270,7 +273,7 @@ void handleJoystick() {
                     }
                 }
                 else if (btn == BTN_LEFT) {
-                    extern char currentPath[256];
+                    
                     // --- LOGIKA KEMBALI / MUNDUR FOLDER ---
                     if (strcmp(currentPath, "/sdcard") == 0) {
                         appMode = 16; // Kalau udah di paling luar, balik ke SD Manager Menu
@@ -294,10 +297,10 @@ void handleJoystick() {
                 } 
                                else if (btn == BTN_OK) {
                     // EKSEKUSI HAPUS FILE!
-                    extern char currentPath[256];
-                    char path[256];
-                    snprintf(path, sizeof(path), "%s/%s", currentPath, sdFileNames[sdFileCursor]); // <-- Ganti bagian ini biar ngikutin folder
-                    unlink(path); 
+                    
+                    
+                    snprintf(full_path, sizeof(full_path), "%s/%s", currentPath, sdFileNames[sdFileCursor]); // <-- Ganti bagian ini biar ngikutin folder
+                    unlink(full_path); 
                     
                     isFileExpInit = false; 
                     sdFileState = 0; // Balik ke mode browse setelah hapus
