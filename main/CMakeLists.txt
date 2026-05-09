@@ -11,6 +11,8 @@ idf_component_register(SRCS "RootX.c"
                             "managers/sd_system.c"
                             "managers/ir_system.c"
                             "managers/battery_system.c"
+                            "managers/tvbgone_engine.c"
+                            "managers/WORLDcodes.c"
                        INCLUDE_DIRS "include" "."
                        REQUIRES esp_wifi nvs_flash esp_netif esp_event esp_timer driver esp_driver_gpio fatfs sdmmc vfs esp_http_server esp_driver_rmt esp_adc )
 
