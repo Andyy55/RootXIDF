@@ -252,7 +252,7 @@ void handleJoystick() {
                                 else if (btn == BTN_OK) {
                     // --- LOGIKA CEK FOLDER / FILE ---
                     struct stat st;
-                    char full_path[256];
+                    char full_path[512];
                     extern char currentPath[256]; // Pastiin lu udah bikin variabel string currentPath di display_system.c!
                     
                     // Gabungin path sekarang dengan nama file/folder yang dipilih
