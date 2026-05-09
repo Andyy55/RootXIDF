@@ -12,6 +12,7 @@
 #include "esp_log.h"
 #include <dirent.h>
 #include <sys/unistd.h>
+#include <sys/stat.h>
 
 #include <sys/statvfs.h> // Wajib buat baca kapasitas memori
 
@@ -50,6 +51,7 @@ void renderTvBGone(void);
 void renderTetrisGame(void);
 
 bool introDone = false; // Penanda intro sudah lewat
+
 
 void init_joystick() {
     int pins[] = {PIN_UP, PIN_DOWN, PIN_LEFT, PIN_RIGHT, PIN_OK};
@@ -1206,7 +1208,7 @@ void tampilkanMenuIR() {
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 2, 1, "SNIFF IR SIGNAL", BLACK, WHITE);
         ssd1306_draw_string_adafruit(0, 10, 25, "Start Sniff??", WHITE, BLACK);
-        ssd1306_draw_string_adafruit(0, 0, 50, "[OK] Gas   [X] Back", WHITE, BLACK);
+        
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 2, 55, "< NO", BLACK, WHITE);
         ssd1306_draw_string_adafruit(0, 95, 55, "OK >", BLACK, WHITE);
@@ -1232,7 +1234,7 @@ void renderSnakeGame() {
     // Kalau lu punya fungsi simpan/baca sd card khusus snake, taruh sini.
     // Sementara kita set manual kalo belum ada.
     
-        if (snakeHighScore == -1) snakeHighScore = baca_highscore_snake();
+   if (snakeHighScore == -1) snakeHighScore = baca_highscore_snake();
     ssd1306_clear(0);
 
     // Array buat nyimpen koordinat badan Ular (Maksimal panjang 100)
@@ -1244,7 +1246,7 @@ void renderSnakeGame() {
     static int appleY = 8;
     
     static uint32_t lastMoveTime = 0;
-    static bool isSnakeInitialized = false;
+    static bool isSnakeInitialized = true;
 
     // Kecepatan Ular (Makin kecil makin ngebut, misal 100ms per gerak)
     int moveInterval = 120; 
@@ -1375,7 +1377,7 @@ void renderSnakeGame() {
 
 
 // Variabel statis untuk mesin gamenya
-static uint8_t tetris_grid[20][10]; // 20 baris (X), 10 kolom (Y)
+static uint8_t tetris_grid[25][10]; // 20 baris (X), 10 kolom (Y)
 static int t_shape, t_rot, t_x, t_y; 
 static uint32_t lastFallTime = 0;
 
@@ -1479,9 +1481,9 @@ void renderTetrisGame() {
 
              // --- RENDER VISUAL TETRIS VERTIKAL ---
         // Grid layar kita geser ke Y=14 biar ada ruang kosong buat teks di Y=0 sampai 12
-        ssd1306_draw_hline(0, 0, 13, 127, WHITE);  // Border Kiri
-        ssd1306_draw_hline(0, 0, 63, 127, WHITE);  // Border Kanan
-        ssd1306_draw_vline(0, 127, 13, 50, WHITE); // Border Bawah (Tanah)
+        ssd1306_draw_hline(0, 0, 13, 126, WHITE);  // Border Kiri
+        ssd1306_draw_hline(0, 0, 63, 126, WHITE);  // Border Kanan
+        ssd1306_draw_vline(0, 126, 13, 50, WHITE); // Border Bawah (Tanah)
 
         for (int y = 0; y < 20; y++) {
             for (int x = 0; x < 10; x++) {
@@ -1577,16 +1579,22 @@ void renderSdManager() {
     if (sdState == 0) { // DASHBOARD UTAMA
         
         // --- 2. BACA KAPASITAS ASLI (Pake statvfs ESP32) ---
-        struct statvfs st;
+                struct statvfs st;
         float total_mb = 0, free_mb = 0, used_mb = 0;
         int percent = 0;
 
+        // FIX: Pake 'st', jangan 'vfd' atau 'vfs'
         if (statvfs("/sdcard", &st) == 0) {
-            total_mb = (st.f_blocks * st.f_frsize) / (1024.0 * 1024.0);
-            free_mb  = (st.f_bfree * st.f_frsize) / (1024.0 * 1024.0);
-            used_mb  = total_mb - free_mb;
+            uint64_t total_bytes = (uint64_t)st.f_blocks * st.f_frsize;
+            uint64_t free_bytes = (uint64_t)st.f_bfree * st.f_frsize;
+    
+            total_mb = total_bytes / (1024.0 * 1024.0);
+            free_mb = free_bytes / (1024.0 * 1024.0);
+            used_mb = total_mb - free_mb;
+            
             if (total_mb > 0) percent = (int)((used_mb / total_mb) * 100);
         }
+
 
         // --- 3. TEXT INFO ---
         char buf[32];
@@ -1649,23 +1657,26 @@ int sdFileCursor = 0;
 int sdFileScroll = 0;
 int sdFileState = 0; 
 bool isFileExpInit = false;
+char currentPath[256] = "/sdcard";
 
 void renderFileExplorer() {
     // --- 1. INIT: BACA SD CARD ---
+        // --- 1. INIT: BACA SD CARD ---
     if (!isFileExpInit) {
         sdTotalFiles = 0;
         sdFileCursor = 0;
         sdFileScroll = 0;
         sdFileState = 0;
 
-        DIR *d = opendir("/sdcard");
+        // FIX: Pake variabel currentPath, jangan "/sdcard" !!!
+        DIR *d = opendir(currentPath);
         if (d) {
             struct dirent *dir;
             while ((dir = readdir(d)) != NULL && sdTotalFiles < MAX_FILES) {
-                // Lewati folder tersembunyi atau System Volume Info
+                // Lewati folder tersembunyi
                 if (dir->d_name[0] == '.') continue; 
                 
-                // Simpan nama file ke array
+                // Simpan nama file/folder ke array
                 strncpy(sdFileNames[sdTotalFiles], dir->d_name, 31);
                 sdFileNames[sdTotalFiles][31] = '\0';
                 sdTotalFiles++;
@@ -1707,8 +1718,12 @@ void renderFileExplorer() {
                 }
             }
             
-            // Footer Info
-            char foot[32]; snprintf(foot, sizeof(foot), "%d/%d [OK] DEL", sdFileCursor + 1, sdTotalFiles);
+
+            // Ganti dari "[OK] DEL" jadi "[OK] SEL/DEL" (Select / Delete)
+char foot[32]; 
+snprintf(foot, sizeof(foot), "%d/%d [OK] SEL/DEL", sdFileCursor + 1, sdTotalFiles);
+ssd1306_draw_string_adafruit(0, 5, 56, foot, WHITE, BLACK);
+
             ssd1306_draw_string_adafruit(0, 5, 56, foot, WHITE, BLACK);
         } 
         else if (sdFileState == 1) { // MODE CONFIRM DELETE

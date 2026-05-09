@@ -9,6 +9,7 @@
 #include "ssd1306.h"
 #include "tvbgone_engine.h"
 #include <unistd.h>
+#include <sys/stat.h>
 
 // Ambil array misterius dari WORLDcodes.c
 extern const struct IrCode* const NApowerCodes[];
@@ -248,26 +249,60 @@ void handleJoystick() {
                         if (sdFileCursor < sdFileScroll) sdFileScroll--;
                     }
                 } 
-                else if (btn == BTN_OK) {
-                    sdFileState = 1; // Minta Konfirmasi Delete
-                } 
-                else if (btn == BTN_LEFT) {
-                    appMode = 16; // Balik ke SD Manager
+                                else if (btn == BTN_OK) {
+                    // --- LOGIKA CEK FOLDER / FILE ---
+                    struct stat st;
+                    char full_path[256];
+                    extern char currentPath[256]; // Pastiin lu udah bikin variabel string currentPath di display_system.c!
+                    
+                    // Gabungin path sekarang dengan nama file/folder yang dipilih
+                    snprintf(full_path, sizeof(full_path), "%s/%s", currentPath, sdFileNames[sdFileCursor]);
+                    
+                    if (stat(full_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+                        // JIKA INI FOLDER: Masuk ke folder itu
+                        strcpy(currentPath, full_path);
+                        sdFileCursor = 0; // Reset kursor ke atas
+                        sdFileScroll = 0;
+                        isFileExpInit = false; // Paksa scan isi folder baru
+                    } else {
+                        // JIKA INI FILE BIASA: Baru munculin minta konfirmasi delete/action
+                        sdFileState = 1; 
+                    }
                 }
+                else if (btn == BTN_LEFT) {
+                    extern char currentPath[256];
+                    // --- LOGIKA KEMBALI / MUNDUR FOLDER ---
+                    if (strcmp(currentPath, "/sdcard") == 0) {
+                        appMode = 16; // Kalau udah di paling luar, balik ke SD Manager Menu
+                    } else {
+                        // Kalau lagi di dalem folder, mundur 1 langkah
+                        char *lastSlash = strrchr(currentPath, '/');
+                        if (lastSlash != NULL) {
+                            *lastSlash = '\0'; // Potong path-nya
+                            if (strlen(currentPath) == 0) strcpy(currentPath, "/sdcard"); // Jaga-jaga
+                        }
+                        sdFileCursor = 0;
+                        sdFileScroll = 0;
+                        isFileExpInit = false; // Paksa scan ulang setelah mundur
+                    }
+                
+
             } 
             else if (sdFileState == 1) { // MODE KONFIRMASI DELETE
                 if (btn == BTN_LEFT) {
                     sdFileState = 0; // Batal delete
                 } 
-                else if (btn == BTN_OK) {
+                               else if (btn == BTN_OK) {
                     // EKSEKUSI HAPUS FILE!
-                    char path[64];
-                    snprintf(path, sizeof(path), "/sdcard/%s", sdFileNames[sdFileCursor]);
-                    unlink(path); // Fungsi C standar buat hapus file
+                    extern char currentPath[256];
+                    char path[256];
+                    snprintf(path, sizeof(path), "%s/%s", currentPath, sdFileNames[sdFileCursor]); // <-- Ganti bagian ini biar ngikutin folder
+                    unlink(path); 
                     
-                    // Reset File Explorer biar dia scan ulang SD Card
                     isFileExpInit = false; 
+                    sdFileState = 0; // Balik ke mode browse setelah hapus
                 }
+
             }
         }
         
@@ -477,6 +512,8 @@ void handleJoystick() {
                     appMode = 15;
                 } else if (currentMenu == 3 && currentSub == 1) {
                     appMode = 16;
+                } else if (currentMenu == 2 && currentSub == 1) {
+                    appMode = 18;
                 }
             }
         }
