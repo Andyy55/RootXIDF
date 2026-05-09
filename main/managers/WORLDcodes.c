@@ -1,6 +1,8 @@
 #include "tvbgone_engine.h"
 #include <stddef.h>
 
+#define NUM_ELEM(x) (sizeof(x) / sizeof(*(x)))
+
 //Codes captured from Generation 3 TV-B-Gone by Limor Fried & Mitch Altman
 // table of POWER codes
 
