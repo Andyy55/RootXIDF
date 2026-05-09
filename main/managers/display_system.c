@@ -10,11 +10,17 @@
 #include <math.h>
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include <dirent.h>
+#include <sys/unistd.h>
+
+#include <sys/statvfs.h> // Wajib buat baca kapasitas memori
 
 
 #define WHITE 1
 #define BLACK 0
 #define MAX_STARS 15
+
+void renderFileExplorer(void);
 
 extern void handleJoystick(void);
 extern void tampilkanLogoDulu(void);
@@ -24,14 +30,15 @@ void tampilkanMenuLogo(void);
 void tampilkanMenuUtama(void);
 extern int baca_highscore_tetris();
 extern void simpan_highscore_tetris(int hs);
-
+void renderAboutScreen(void);
+void renderRebootScreen(void);
 void tampilkanMenuLogo(void);
 void tampilkanMenuUtama(void);
 void tampilkanWifiScanner(void);
 void tampilkanDeauthScreen(void);
 void tampilkanBrightness(void);
 void tampilkanSpamScreen(const char* judul, const char* subTeks);
-
+void renderSdManager(void);
 void tampilkanStationScanner(void);
 void tampilkanTrackScreen(void);
 void tampilkandeauthsta(void);
@@ -40,6 +47,7 @@ void renderDinoGame(void);
 void tampilkanMenuIR(void);
 void tampilkanMenuSavedIR(void);
 void renderSnakeGame(void); // TAMBAHIN INI BIAR GAK ERROR "IMPLICIT DECLARATION"
+void renderTvBGone(void);
 void renderTetrisGame(void);
 
 bool introDone = false; // Penanda intro sudah lewat
@@ -106,6 +114,16 @@ renderDinoGame();
             renderTetrisGame();           // <--- TAMBAHIN INI
         } else if (appMode == MODE_SAVED_REMOTE) {  // <--- TAMBAHIN INI
             tampilkanMenuSavedIR();
+        } else if (appMode == 14) {
+        renderAboutScreen(); 
+        } else if (appMode == 15) {
+        renderRebootScreen();
+        } else if (appMode == 16) {       // <--- TAMBAHIN INI (SD MANAGER)
+            renderSdManager();            // <--- TAMBAHIN INI
+        } else if (appMode == 17) {       // <--- TAMBAHIN INI
+            renderFileExplorer();         // <--- TAMBAHIN INI
+        } else if (appMode == 18) {       // <--- TAMBAHIN INI
+            renderTvBGone();              // <--- TAMBAHIN INI
         }
 
 
@@ -235,7 +253,7 @@ iconSmall_saved
 
 const unsigned char* iconListSet[]  = {
 iconSmall_bright,
-iconSmall_wifi,
+iconSmall_saved,
 iconSmall_info,
 iconSmall_repeat 
 };
@@ -273,7 +291,7 @@ const char* subMenuIR[]   = {
 
 const char* subMenuSet[]  = {
 "Brightness",
-"WiFi Setup",
+"SD Manager",
 "About RootX",
 "Reboot" 
 };
@@ -1057,7 +1075,7 @@ void tampilkanEvilTwinScreen() {
 
      
         
-        ssd1306_draw_string_adafruit(0, 10, 25, targetTerkunci.ssid, WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 10, 35, targetTerkunci.ssid, WHITE, BLACK);
         ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
         ssd1306_draw_string_adafruit(0, 2, 55, "< NO", BLACK, WHITE);
         ssd1306_draw_string_adafruit(0, 95, 55, "YES >", BLACK, WHITE);
@@ -1066,7 +1084,7 @@ void tampilkanEvilTwinScreen() {
         ssd1306_draw_string_adafruit(0, 15, 20, "WAITING FOR DATA...", WHITE, BLACK);
         int bounce = (millis() / 200) % 5;
         ssd1306_draw_string_adafruit(0, 50, 40 + bounce, "...", WHITE, BLACK);
-        ssd1306_draw_string_adafruit(0, 2, 55, "< NO", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 2, 55, "< STOP", WHITE, BLACK);
     }
     else if (evilTwinState == 2) {
         ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
@@ -1125,7 +1143,8 @@ void tampilkanMenuSavedIR() {
     if (currentIRSavedState == IR_SAVED_STATE_LIST) {
         // --- HEADER (BLOK PUTIH) ---
         // Format library lu: (ID, X, Y, Teks, Warna Teks, Warna Background)
-        ssd1306_draw_string_adafruit(0, 0, 0, " == SAVED REMOTES ==", BLACK, WHITE);
+        ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 1, "SAVED REMOTE", BLACK, WHITE);
 
         if (totalSavedRemotes == 0) {
             ssd1306_draw_string_adafruit(0, 10, 25, "Data Kosong!", WHITE, BLACK);
@@ -1147,22 +1166,29 @@ void tampilkanMenuSavedIR() {
         }
 
         // --- FOOTER (BLOK PUTIH) ---
-        ssd1306_draw_string_adafruit(0, 0, 52, " [OK]Pilih   [<]Back", BLACK, WHITE);
+        ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 55, "< NO", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 95, 55, "OK >", BLACK, WHITE);
     } 
     else if (currentIRSavedState == IR_SAVED_STATE_ACTION) {
         char buf[32];
+        
         snprintf(buf, sizeof(buf), " ACTION: %s ", listSavedRemotes[savedRemoteIndex].nama);
         // Header
-        ssd1306_draw_string_adafruit(0, 0, 0, buf, BLACK, WHITE);
+        
+        ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 1, buf, BLACK, WHITE);
 
         // Menu Transmit / Hapus
         if (actionMenuIndex == 0) {
-            ssd1306_draw_string_adafruit(0, 15, 25, "> 1. TRANSMIT", WHITE, BLACK);
-            ssd1306_draw_string_adafruit(0, 15, 40, "  2. HAPUS", WHITE, BLACK);
+            ssd1306_draw_string_adafruit(0, 15, 20, "> 1. TRANSMIT", WHITE, BLACK);
+            ssd1306_draw_string_adafruit(0, 15, 35, "  2. HAPUS", WHITE, BLACK);
         } else {
-            ssd1306_draw_string_adafruit(0, 15, 25, "  1. TRANSMIT", WHITE, BLACK);
-            ssd1306_draw_string_adafruit(0, 15, 40, "> 2. HAPUS", WHITE, BLACK);
+            ssd1306_draw_string_adafruit(0, 15, 20, "  1. TRANSMIT", WHITE, BLACK);
+            ssd1306_draw_string_adafruit(0, 15, 35, "> 2. HAPUS", WHITE, BLACK);
         }
+        ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 55, "< NO", BLACK, WHITE);
     } 
     else if (currentIRSavedState == IR_SAVED_STATE_SENDING) {
         // Layar Polos, Tulisan di Tengah!
@@ -1178,9 +1204,14 @@ void tampilkanMenuIR() {
     char buf[32];
 
     if (currentIRState == IR_STATE_CONFIRM) {
-        ssd1306_draw_string_adafruit(0, 10, 10, "SNIFF IR SIGNAL", WHITE, BLACK);
-        ssd1306_draw_string_adafruit(0, 30, 30, "YAKIN??", WHITE, BLACK);
+        ssd1306_fill_rectangle(0, 0, 0, 128, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 1, "SNIFF IR SIGNAL", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 10, 25, "Start Sniff??", WHITE, BLACK);
         ssd1306_draw_string_adafruit(0, 0, 50, "[OK] Gas   [X] Back", WHITE, BLACK);
+        ssd1306_fill_rectangle(0, 0, 54, 128, 10, WHITE);
+        ssd1306_draw_string_adafruit(0, 2, 55, "< NO", BLACK, WHITE);
+        ssd1306_draw_string_adafruit(0, 95, 55, "OK >", BLACK, WHITE);
+    
     } 
     else if (currentIRState == IR_STATE_WAITING) {
         ssd1306_draw_string_adafruit(0, 5, 20, "Menunggu", WHITE, BLACK);
@@ -1321,7 +1352,7 @@ void renderSnakeGame() {
         
         // Cukup tampilin instruksi aja, logikanya udah diatur di input_system.c
         ssd1306_draw_string_adafruit(0, 15, 45, "[OK] RESTART", WHITE, BLACK);
-        ssd1306_draw_string_adafruit(0, 15, 55, "[LEFT] MENU", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 15, 55, "[<] BACK", WHITE, BLACK);
 
         if (snakeScore > snakeHighScore) {
             snakeHighScore = snakeScore;
@@ -1449,9 +1480,9 @@ void renderTetrisGame() {
 
              // --- RENDER VISUAL TETRIS VERTIKAL ---
         // Grid layar kita geser ke Y=14 biar ada ruang kosong buat teks di Y=0 sampai 12
-        ssd1306_draw_hline(0, 0, 13, 102, WHITE);  // Border Kiri
-        ssd1306_draw_hline(0, 0, 63, 102, WHITE);  // Border Kanan
-        ssd1306_draw_vline(0, 102, 13, 50, WHITE); // Border Bawah (Tanah)
+        ssd1306_draw_hline(0, 0, 13, 127, WHITE);  // Border Kiri
+        ssd1306_draw_hline(0, 0, 63, 127, WHITE);  // Border Kanan
+        ssd1306_draw_vline(0, 127, 13, 50, WHITE); // Border Bawah (Tanah)
 
         for (int y = 0; y < 20; y++) {
             for (int x = 0; x < 10; x++) {
@@ -1486,6 +1517,275 @@ void renderTetrisGame() {
 
     
 
+    
+    ssd1306_refresh(0, true);
+}
+
+void renderAboutScreen() {
+    ssd1306_clear(0);
+
+    // Bikin border kotak di pinggir layar biar UI-nya rapi
+    ssd1306_draw_rectangle(0, 0, 0, 128, 64, WHITE);
+    ssd1306_draw_rectangle(0, 2, 2, 124, 60, WHITE); // Border dalem (double line)
+
+    // Judul
+    ssd1306_draw_string_adafruit(0, 32, 8, "ROOTX OS", WHITE, BLACK);
+    ssd1306_draw_hline(0, 25, 18, 78, WHITE); // Garis bawah judul
+
+    // Info Alat (Lu bisa ganti teksnya sesuka lu Cok!)
+    ssd1306_draw_string_adafruit(0, 10, 25, "Ver : 1.0.0", WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 10, 35, "Core: ESP32-S3", WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 10, 45, "By  : Andyy", WHITE, BLACK); // Ganti pake nama lu!
+
+    // Tombol Keluar
+    ssd1306_draw_string_adafruit(0, 90, 45, "[<]", WHITE, BLACK); // Logo Kiri buat exit
+
+    ssd1306_refresh(0, true);
+}
+
+void renderRebootScreen() {
+    ssd1306_clear(0);
+
+    // Border Frame biar keren
+    ssd1306_draw_rectangle(0, 5, 5, 118, 54, WHITE);
+
+    // Teks Pertanyaan
+    ssd1306_draw_string_adafruit(0, 20, 20, "Reboot sekarang?", WHITE, BLACK);
+
+    // Petunjuk Tombol
+    
+    ssd1306_draw_string_adafruit(0, 2, 55, "< NO", WHITE, BLACK);
+    ssd1306_draw_string_adafruit(0, 95, 55, "OK >", WHITE, BLACK);
+
+    ssd1306_refresh(0, true);
+}
+
+// Variabel State buat SD Manager
+int sdActionIdx = 0; // 0: EXIT, 1: FILES, 2: FORMAT
+int sdState = 0;     // 0: Main Dashboard, 1: Confirm Format, 2: Formatting
+
+void renderSdManager() {
+    ssd1306_clear(0);
+    
+    // --- 1. HEADER (Inverted Block) ---
+    // Gambar kotak putih (tinggi 11px), terus kasih teks hitam di dalamnya
+    for(int y = 0; y < 11; y++) ssd1306_draw_hline(0, 0, y, 128, WHITE);
+    
+    // Hitung posisi tengah tulisan "SD MANAGER" (10 huruf x 6px = 60px lebar)
+    // X = (128 - 60) / 2 = 34
+    ssd1306_draw_string_adafruit(0, 34, 2, "SD MANAGER", BLACK, WHITE);
+
+    if (sdState == 0) { // DASHBOARD UTAMA
+        
+        // --- 2. BACA KAPASITAS ASLI (Pake statvfs ESP32) ---
+        struct statvfs st;
+        float total_mb = 0, free_mb = 0, used_mb = 0;
+        int percent = 0;
+
+        if (statvfs("/sdcard", &st) == 0) {
+            total_mb = (st.f_blocks * st.f_frsize) / (1024.0 * 1024.0);
+            free_mb  = (st.f_bfree * st.f_frsize) / (1024.0 * 1024.0);
+            used_mb  = total_mb - free_mb;
+            if (total_mb > 0) percent = (int)((used_mb / total_mb) * 100);
+        }
+
+        // --- 3. TEXT INFO ---
+        char buf[32];
+        // Kalo memori lebih dari 1000 MB, kita tampilin dlm GB biar keren
+        if (total_mb > 1024) {
+            snprintf(buf, sizeof(buf), "Size: %.1f GB", total_mb / 1024.0);
+            ssd1306_draw_string_adafruit(0, 5, 15, buf, WHITE, BLACK);
+            snprintf(buf, sizeof(buf), "Free: %.1f GB", free_mb / 1024.0);
+            ssd1306_draw_string_adafruit(0, 5, 25, buf, WHITE, BLACK);
+        } else {
+            snprintf(buf, sizeof(buf), "Size: %.0f MB", total_mb);
+            ssd1306_draw_string_adafruit(0, 5, 15, buf, WHITE, BLACK);
+            snprintf(buf, sizeof(buf), "Free: %.0f MB", free_mb);
+            ssd1306_draw_string_adafruit(0, 5, 25, buf, WHITE, BLACK);
+        }
+        
+        // --- 4. PROGRESS BAR PRESISI ---
+        // Tulisan Persen di atas bar sebelah kanan
+        snprintf(buf, sizeof(buf), "%d%%", percent);
+        ssd1306_draw_string_adafruit(0, 100, 25, buf, WHITE, BLACK);
+
+        // Border luar Bar (X: 5, Y: 38, Lebar: 118, Tinggi: 8)
+        ssd1306_draw_rectangle(0, 5, 38, 118, 8, WHITE);
+        
+        // Isi Bar (Lebar maksimal isi adalah 114)
+        int fillWidth = (percent * 114) / 100;
+        if (fillWidth > 0) {
+            for (int i = 0; i < 4; i++) {
+                ssd1306_draw_hline(0, 7, 40 + i, fillWidth, WHITE);
+            }
+        }
+
+        // --- 5. CAROUSEL MENU ACTION ---
+        const char* menuNames[] = {"[ EXIT ]", "[ FILES ]", "[ FORMAT ]"};
+        // Hitung posisi tengah dinamis berdasarkan panjang kata
+        int textLen = strlen(menuNames[sdActionIdx]) * 6;
+        int startX = (128 - textLen) / 2;
+
+        ssd1306_draw_string_adafruit(0, 5, 54, "<", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, startX, 54, menuNames[sdActionIdx], WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 117, 54, ">", WHITE, BLACK);
+
+    } 
+    else if (sdState == 1) { // KONFIRMASI FORMAT
+        ssd1306_draw_string_adafruit(0, 15, 20, "FORMAT SD CARD?", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 25, 32, "ALL DATA LOST!", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 5, 50, "[<-] NO   [OK] YES", WHITE, BLACK);
+    } 
+    else if (sdState == 2) { // FORMATTING
+        ssd1306_draw_string_adafruit(0, 25, 30, "FORMATTING...", WHITE, BLACK);
+    }
+
+    ssd1306_refresh(0, true);
+}
+
+// Definisi variabel Global buat File Explorer
+char sdFileNames[MAX_FILES][32];
+int sdTotalFiles = 0;
+int sdFileCursor = 0;
+int sdFileScroll = 0;
+int sdFileState = 0; 
+bool isFileExpInit = false;
+
+void renderFileExplorer() {
+    // --- 1. INIT: BACA SD CARD ---
+    if (!isFileExpInit) {
+        sdTotalFiles = 0;
+        sdFileCursor = 0;
+        sdFileScroll = 0;
+        sdFileState = 0;
+
+        DIR *d = opendir("/sdcard");
+        if (d) {
+            struct dirent *dir;
+            while ((dir = readdir(d)) != NULL && sdTotalFiles < MAX_FILES) {
+                // Lewati folder tersembunyi atau System Volume Info
+                if (dir->d_name[0] == '.') continue; 
+                
+                // Simpan nama file ke array
+                strncpy(sdFileNames[sdTotalFiles], dir->d_name, 31);
+                sdFileNames[sdTotalFiles][31] = '\0';
+                sdTotalFiles++;
+            }
+            closedir(d);
+        }
+        isFileExpInit = true;
+    }
+
+    ssd1306_clear(0);
+
+    // --- 2. HEADER UI ---
+    for(int y = 0; y < 11; y++) ssd1306_draw_hline(0, 0, y, 128, WHITE);
+    ssd1306_draw_string_adafruit(0, 38, 2, "SD FILES", BLACK, WHITE);
+
+    if (sdTotalFiles == 0) {
+        ssd1306_draw_string_adafruit(0, 15, 30, "NO FILES FOUND!", WHITE, BLACK);
+        ssd1306_draw_string_adafruit(0, 30, 50, "[<-] BACK", WHITE, BLACK);
+    } 
+    else {
+        if (sdFileState == 0) { // MODE LISTING
+            // --- 3. RENDER DAFTAR FILE (Max 5 baris) ---
+            int maxList = 5; 
+            for (int i = 0; i < maxList; i++) {
+                int fileIdx = sdFileScroll + i;
+                if (fileIdx >= sdTotalFiles) break;
+
+                int yPos = 14 + (i * 10); // Jarak antar baris 10 pixel
+
+                if (fileIdx == sdFileCursor) {
+                    // Kursor Aktif: Kasih panah dan hurufnya kita Invert biar keren
+                    ssd1306_draw_string_adafruit(0, 0, yPos, ">", WHITE, BLACK);
+                    // Kotak Invert Background kursor
+                    ssd1306_draw_rectangle(0, 8, yPos - 1, 120, 9, WHITE);
+                    ssd1306_draw_string_adafruit(0, 10, yPos, sdFileNames[fileIdx], BLACK, WHITE);
+                } else {
+                    // File biasa
+                    ssd1306_draw_string_adafruit(0, 10, yPos, sdFileNames[fileIdx], WHITE, BLACK);
+                }
+            }
+            
+            // Footer Info
+            char foot[32]; snprintf(foot, sizeof(foot), "%d/%d [OK] DEL", sdFileCursor + 1, sdTotalFiles);
+            ssd1306_draw_string_adafruit(0, 5, 56, foot, WHITE, BLACK);
+        } 
+        else if (sdFileState == 1) { // MODE CONFIRM DELETE
+            ssd1306_draw_string_adafruit(0, 20, 20, "DELETE FILE?", WHITE, BLACK);
+            // Tulis nama file yg mau dihapus (Max 18 karakter biar muat di tengah)
+            char truncName[20];
+            snprintf(truncName, sizeof(truncName), "%.18s", sdFileNames[sdFileCursor]);
+            ssd1306_draw_string_adafruit(0, 10, 32, truncName, WHITE, BLACK);
+            
+            ssd1306_draw_string_adafruit(0, 5, 50, "[<-] NO   [OK] YES", WHITE, BLACK);
+        }
+    }
+
+    ssd1306_refresh(0, true);
+}
+
+// Definisi state TV-B-Gone
+int tvbgoneState = 0;
+int tvbgoneMenuIdx = 0;
+int tvbgoneProgress = 0;
+int tvbgoneTotal = 0;
+
+void renderTvBGone() {
+    ssd1306_clear(0);
+    
+    // --- 1. HEADER PRESISI ---
+    // Kotak putih Y: 0-12
+    ssd1306_draw_rectangle(0, 0, 0, 128, 12, WHITE);
+    // Teks 9 huruf x 6px = 54. X = (128-54)/2 = 37
+    ssd1306_draw_string_adafruit(0, 37, 2, "TV-B-GONE", BLACK, WHITE);
+    
+    if (tvbgoneState == 0) { // MODE MENU PILIH REGION
+        const char* menus[] = {"[ NA / ASIA ]", "[  EUROPE   ]", "[ ALL WORLD ]"};
+        
+        for(int i = 0; i < 3; i++) {
+            int yPos = 20 + (i * 12);
+            
+            if (i == tvbgoneMenuIdx) {
+                // Kursor Aktif
+                ssd1306_draw_string_adafruit(0, 18, yPos, ">", WHITE, BLACK);
+                ssd1306_draw_rectangle(0, 26, yPos - 1, 78, 9, WHITE); // Highlight
+                ssd1306_draw_string_adafruit(0, 28, yPos, menus[i], BLACK, WHITE);
+            } else {
+                ssd1306_draw_string_adafruit(0, 28, yPos, menus[i], WHITE, BLACK);
+            }
+        }
+        
+        // Footer Petunjuk Tombol
+        ssd1306_draw_string_adafruit(0, 5, 55, "[<-] EXIT    [OK] START", WHITE, BLACK);
+
+    } 
+    else if (tvbgoneState == 1) { // MODE FIRING (LAGI NEMBAK)
+        
+        // Animasi Teks Kedip
+        if ((xTaskGetTickCount() * portTICK_PERIOD_MS) / 500 % 2 == 0) {
+            ssd1306_draw_string_adafruit(0, 18, 20, "TRANSMITTING...", WHITE, BLACK);
+        }
+        
+        // --- PROGRESS BAR MATEMATIS ---
+        // Border Bar (X: 10, Lebar: 108)
+        ssd1306_draw_rectangle(0, 10, 35, 108, 10, WHITE);
+        
+        if (tvbgoneTotal > 0) {
+            // Hitung lebar isi bar (Maks 104 pixel)
+            int fillWidth = (tvbgoneProgress * 104) / tvbgoneTotal;
+            if (fillWidth > 0) {
+                ssd1306_draw_rectangle(0, 12, 37, fillWidth, 6, WHITE); // Fill Bar
+            }
+        }
+        
+        // Teks Counter
+        char counter[32];
+        snprintf(counter, sizeof(counter), "CODE: %d / %d", tvbgoneProgress, tvbgoneTotal);
+        // Tengahin teks counter (Asumsi maks 15 char = 90px. X = (128-90)/2 = 19)
+        ssd1306_draw_string_adafruit(0, 19, 50, counter, WHITE, BLACK);
+    }
     
     ssd1306_refresh(0, true);
 }

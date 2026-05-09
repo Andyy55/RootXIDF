@@ -7,6 +7,13 @@
 #include "esp_wifi.h"
 #include <string.h>
 #include "ssd1306.h"
+#include "tvbgone_engine.h"
+
+// Ambil array misterius dari WORLDcodes.c
+extern const struct IrCode* const NApowerCodes[];
+extern const struct IrCode* const EUpowerCodes[];
+extern const uint8_t num_NAcodes;
+extern const uint8_t num_EUcodes;
 
 // Pengganti String biar enteng dan cepat!
 
@@ -137,6 +144,167 @@ void handleJoystick() {
         lastPress = input_millis();
         return; // <--- KUNCI SAKTI BIAR GAK BOCOR KE MENU UTAMA
     }
+        if (appMode == 14) { // Menu About RootX
+        if (btn == BTN_LEFT || btn == BTN_OK) {
+            appMode = 0; // Balik ke Menu Utama
+        }
+        lastPress = input_millis();
+        return; 
+    }
+    
+        if (appMode == 15) {
+        if (btn == BTN_OK || btn == BTN_RIGHT) {
+            // EKSEKUSI REBOOT!
+            ssd1306_clear(0);
+            ssd1306_draw_string_adafruit(0, 25, 30, "REBOOTING...", WHITE, BLACK);
+            ssd1306_refresh(0, true);
+            
+            vTaskDelay(pdMS_TO_TICKS(500)); // Kasih jeda dikit biar OLED sempet nulis
+            esp_restart(); // Perintah sakti buat restart ESP32
+        } 
+        else if (btn == BTN_LEFT) {
+            appMode = 0; // Balik ke Menu Utama
+        }
+        
+        lastPress = input_millis();
+        return;
+    }
+        if (appMode == 16) { // SD CARD MANAGER
+        extern int sdActionIdx;
+        extern int sdState;
+
+        if (sdState == 0) { // Di Dashboard
+            if (btn == BTN_LEFT) {
+                sdActionIdx--;
+                if (sdActionIdx < 0) sdActionIdx = 2; // Looping ke Format
+            } 
+            else if (btn == BTN_RIGHT) {
+                sdActionIdx++;
+                if (sdActionIdx > 2) sdActionIdx = 0; // Looping ke Exit
+            } 
+            else if (btn == BTN_OK) {
+                if (sdActionIdx == 0) {
+                    appMode = 0; // KELUAR
+                } 
+                else if (sdActionIdx == 1) {
+                    // MASUK KE FILE EXPLORER
+                    extern bool isFileExpInit;
+                    isFileExpInit = false; // Paksa scan ulang
+                    appMode = 17; 
+                } 
+
+                else if (sdActionIdx == 2) {
+                    sdState = 1; // MASUK KE KONFIRMASI FORMAT
+                }
+            }
+        } 
+        else if (sdState == 1) { // Layar Konfirmasi Format
+            if (btn == BTN_LEFT) {
+                sdState = 0; // Batal, balik ke Dashboard
+            } 
+            else if (btn == BTN_OK) {
+                // EKSEKUSI FORMAT
+                sdState = 2; // Tampilin layar "Formatting..."
+                // (Masa depan: Panggil fungsi format ESP-IDF F_MKFS disini)
+                
+                // Kasih delay buatan sementara biar keliatan kerja (hapus ini ntar kalo fungsi format aslinya udah dipasang)
+                vTaskDelay(pdMS_TO_TICKS(1500)); 
+                
+                sdState = 0; // Balik ke dashboard setelah selesai
+                sdActionIdx = 0; // Kursor balik ke Exit biar aman
+            }
+        }
+
+        lastPress = input_millis();
+        return;
+    }
+    
+        if (appMode == 17) { // FILE EXPLORER
+        extern int sdFileCursor, sdFileScroll, sdTotalFiles, sdFileState;
+        extern bool isFileExpInit;
+        extern char sdFileNames[MAX_FILES][32];
+
+        if (sdTotalFiles == 0) {
+            if (btn == BTN_LEFT || btn == BTN_OK) {
+                appMode = 16; // Balik ke SD Manager
+            }
+        } 
+        else {
+            if (sdFileState == 0) { // MODE BROWSE
+                if (btn == BTN_DOWN) {
+                    if (sdFileCursor < sdTotalFiles - 1) {
+                        sdFileCursor++;
+                        // Logika Scrolling kebawah
+                        if (sdFileCursor >= sdFileScroll + 5) sdFileScroll++;
+                    }
+                } 
+                else if (btn == BTN_UP) {
+                    if (sdFileCursor > 0) {
+                        sdFileCursor--;
+                        // Logika Scrolling keatas
+                        if (sdFileCursor < sdFileScroll) sdFileScroll--;
+                    }
+                } 
+                else if (btn == BTN_OK) {
+                    sdFileState = 1; // Minta Konfirmasi Delete
+                } 
+                else if (btn == BTN_LEFT) {
+                    appMode = 16; // Balik ke SD Manager
+                }
+            } 
+            else if (sdFileState == 1) { // MODE KONFIRMASI DELETE
+                if (btn == BTN_LEFT) {
+                    sdFileState = 0; // Batal delete
+                } 
+                else if (btn == BTN_OK) {
+                    // EKSEKUSI HAPUS FILE!
+                    char path[64];
+                    snprintf(path, sizeof(path), "/sdcard/%s", sdFileNames[sdFileCursor]);
+                    unlink(path); // Fungsi C standar buat hapus file
+                    
+                    // Reset File Explorer biar dia scan ulang SD Card
+                    isFileExpInit = false; 
+                }
+            }
+        }
+        
+        lastPress = input_millis();
+        return;
+    }
+        if (appMode == 18) { // TV-B-GONE MENU
+        extern int tvbgoneState, tvbgoneMenuIdx;
+
+        if (tvbgoneState == 0) { // Lagi Pilih Menu
+            if (btn == BTN_UP) {
+                if (tvbgoneMenuIdx > 0) tvbgoneMenuIdx--;
+            } 
+            else if (btn == BTN_DOWN) {
+                if (tvbgoneMenuIdx < 2) tvbgoneMenuIdx++;
+            } 
+            else if (btn == BTN_LEFT) {
+                appMode = 0; // Keluar ke Menu Utama
+            } 
+            else if (btn == BTN_OK) {
+                // START PENEMBAKAN!
+                tvbgoneState = 1; 
+                
+                // Bikin pekerja bayangan (FreeRTOS Task) buat nembak
+                if (tvbgoneTaskHandle == NULL) {
+                    xTaskCreate(tvbgone_fire_task, "tvbgone_task", 8192, NULL, 5, &tvbgoneTaskHandle);
+                }
+            }
+        } 
+        else if (tvbgoneState == 1) { // Lagi Nembak
+            if (btn == BTN_LEFT || btn == BTN_OK) {
+                // STOP PENEMBAKAN!
+                tvbgoneState = 0; // Ini bakal ngasih tau Task buat bunuh diri (goto end_task)
+            }
+        }
+
+        lastPress = input_millis();
+        return;
+    }
+    
 
     if (appMode == MODE_SAVED_REMOTE) {
         if (currentIRSavedState == IR_SAVED_STATE_LIST) {
@@ -300,7 +468,13 @@ void handleJoystick() {
                     appMode = 12;
                     } else if (currentMenu == 4 && currentSub == 2) {
                     appMode = 13;
-                    }
+                    } else if (currentMenu == 3 && currentSub == 2) {
+                    appMode = 14;
+                } else if (currentMenu == 3 && currentSub == 3) {
+                    appMode = 15;
+                } else if (currentMenu == 3 && currentSub == 1) {
+                    appMode = 16;
+                }
             }
         }
         lastPress = input_millis();
@@ -319,6 +493,45 @@ void handleJoystick() {
 
 
 
+TaskHandle_t tvbgoneTaskHandle = NULL;
+
+void tvbgone_fire_task(void *pvParameters) {
+    extern int tvbgoneMenuIdx, tvbgoneProgress, tvbgoneTotal, tvbgoneState;
+    
+    tvbgoneProgress = 0;
+    // Set Target Total
+    if (tvbgoneMenuIdx == 0) tvbgoneTotal = num_NAcodes;
+    else if (tvbgoneMenuIdx == 1) tvbgoneTotal = num_EUcodes;
+    else tvbgoneTotal = num_NAcodes + num_EUcodes;
+
+    // 1. HAJAR REGION NA / ASIA (Jika Dipilih atau Mode ALL)
+    if (tvbgoneMenuIdx == 0 || tvbgoneMenuIdx == 2) {
+        for (int i = 0; i < num_NAcodes; i++) {
+            send_tvbgone_code(NApowerCodes[i]); // Tembak!
+            tvbgoneProgress++;
+            vTaskDelay(pdMS_TO_TICKS(250));     // Jeda 250ms biar sensor TV gak nge-lag
+            
+            // Kalo state berubah (berarti user pencet tombol Exit/Stop)
+            if (tvbgoneState == 0) goto end_task; 
+        }
+    }
+
+    // 2. HAJAR REGION EUROPE (Jika Dipilih atau Mode ALL)
+    if (tvbgoneMenuIdx == 1 || tvbgoneMenuIdx == 2) {
+        for (int i = 0; i < num_EUcodes; i++) {
+            send_tvbgone_code(EUpowerCodes[i]); // Tembak!
+            tvbgoneProgress++;
+            vTaskDelay(pdMS_TO_TICKS(250));
+            
+            if (tvbgoneState == 0) goto end_task; 
+        }
+    }
+
+end_task:
+    tvbgoneState = 0; // Balik ke Menu kalau udah selesai
+    tvbgoneTaskHandle = NULL;
+    vTaskDelete(NULL); // Bunuh diri task-nya
+}
 
 
 
