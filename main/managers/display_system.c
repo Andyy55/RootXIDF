@@ -14,7 +14,7 @@
 #include <sys/unistd.h>
 #include <sys/stat.h>
 
-#include <sys/statvfs.h> 
+#include <sys/statvfs.h> // Wajib buat baca kapasitas memori
 
 
 
@@ -50,7 +50,7 @@ void renderSnakeGame(void);
 void renderTvBGone(void);
 void renderTetrisGame(void);
 
-bool introDone = false; 
+bool introDone = false;
 
 
 void init_joystick() {
@@ -78,8 +78,8 @@ if (ssd1306_init(0, 9, 8)) {
     tampilkanTeksSplash();
     introDone = true;
     for(;;) {
-        // Cek mode aplikasi dan tampilkan layar yang pas
-handleJoystick(); // Cek input
+      
+handleJoystick(); 
 
         if (appMode == 0) {
             if (inSubMenu == false) tampilkanMenuLogo();
@@ -1246,7 +1246,7 @@ void renderSnakeGame() {
     static int appleY = 8;
     
     static uint32_t lastMoveTime = 0;
-    static bool isSnakeInitialized = true;
+    
 
     // Kecepatan Ular (Makin kecil makin ngebut, misal 100ms per gerak)
     int moveInterval = 120; 
@@ -1562,6 +1562,7 @@ void renderRebootScreen() {
 }
 
 // Variabel State buat SD Manager
+// Variabel State buat SD Manager
 int sdActionIdx = 0; // 0: EXIT, 1: FILES, 2: FORMAT
 int sdState = 0;     // 0: Main Dashboard, 1: Confirm Format, 2: Formatting
 
@@ -1569,24 +1570,23 @@ void renderSdManager() {
     ssd1306_clear(0);
     
     // --- 1. HEADER (Inverted Block) ---
-    // Gambar kotak putih (tinggi 11px), terus kasih teks hitam di dalamnya
     for(int y = 0; y < 11; y++) ssd1306_draw_hline(0, 0, y, 128, WHITE);
-    
-    // Hitung posisi tengah tulisan "SD MANAGER" (10 huruf x 6px = 60px lebar)
-    // X = (128 - 60) / 2 = 34
     ssd1306_draw_string_adafruit(0, 34, 2, "SD MANAGER", BLACK, WHITE);
 
     if (sdState == 0) { // DASHBOARD UTAMA
         
-        // --- 2. BACA KAPASITAS ASLI (Pake statvfs ESP32) ---
-                struct statvfs st;
+        struct statvfs st;
         float total_mb = 0, free_mb = 0, used_mb = 0;
         int percent = 0;
+        bool is_mounted = false; // TAMBAHAN: Buat deteksi sukses/gagal mount
 
-        // FIX: Pake 'st', jangan 'vfd' atau 'vfs'
+        // BACA KAPASITAS ASLI (Pake statvfs ESP32)
         if (statvfs("/sdcard", &st) == 0) {
-            uint64_t total_bytes = (uint64_t)st.f_blocks * st.f_frsize;
-            uint64_t free_bytes = (uint64_t)st.f_bfree * st.f_frsize;
+            is_mounted = true; // Kalo sukses, flag ini nyala!
+            
+            // Cast ke uint64_t biar aman dari limit 32-bit
+            uint64_t total_bytes = (uint64_t)st.f_blocks * (uint64_t)st.f_frsize;
+            uint64_t free_bytes = (uint64_t)st.f_bfree * (uint64_t)st.f_frsize;
     
             total_mb = total_bytes / (1024.0 * 1024.0);
             free_mb = free_bytes / (1024.0 * 1024.0);
@@ -1595,31 +1595,35 @@ void renderSdManager() {
             if (total_mb > 0) percent = (int)((used_mb / total_mb) * 100);
         }
 
-
         // --- 3. TEXT INFO ---
         char buf[32];
-        // Kalo memori lebih dari 1000 MB, kita tampilin dlm GB biar keren
-        if (total_mb > 1024) {
-            snprintf(buf, sizeof(buf), "Size: %.1f GB", total_mb / 1024.0);
-            ssd1306_draw_string_adafruit(0, 5, 15, buf, WHITE, BLACK);
-            snprintf(buf, sizeof(buf), "Free: %.1f GB", free_mb / 1024.0);
-            ssd1306_draw_string_adafruit(0, 5, 25, buf, WHITE, BLACK);
-        } else {
-            snprintf(buf, sizeof(buf), "Size: %.0f MB", total_mb);
-            ssd1306_draw_string_adafruit(0, 5, 15, buf, WHITE, BLACK);
-            snprintf(buf, sizeof(buf), "Free: %.0f MB", free_mb);
-            ssd1306_draw_string_adafruit(0, 5, 25, buf, WHITE, BLACK);
+        
+        // JIKA GAGAL BACA SD CARD (Kabel salah / Belum format / Modul mati)
+        if (!is_mounted || total_mb == 0) {
+            ssd1306_draw_string_adafruit(0, 5, 15, "ERR: NOT MOUNTED", WHITE, BLACK);
+            ssd1306_draw_string_adafruit(0, 5, 25, "Cek VCC (wajib 5V)", WHITE, BLACK);
+        } 
+        // JIKA SUKSES BACA SD CARD
+        else {
+            if (total_mb > 1024) {
+                snprintf(buf, sizeof(buf), "Size: %.1f GB", total_mb / 1024.0);
+                ssd1306_draw_string_adafruit(0, 5, 15, buf, WHITE, BLACK);
+                snprintf(buf, sizeof(buf), "Free: %.1f GB", free_mb / 1024.0);
+                ssd1306_draw_string_adafruit(0, 5, 25, buf, WHITE, BLACK);
+            } else {
+                snprintf(buf, sizeof(buf), "Size: %.0f MB", total_mb);
+                ssd1306_draw_string_adafruit(0, 5, 15, buf, WHITE, BLACK);
+                snprintf(buf, sizeof(buf), "Free: %.0f MB", free_mb);
+                ssd1306_draw_string_adafruit(0, 5, 25, buf, WHITE, BLACK);
+            }
         }
         
         // --- 4. PROGRESS BAR PRESISI ---
-        // Tulisan Persen di atas bar sebelah kanan
         snprintf(buf, sizeof(buf), "%d%%", percent);
         ssd1306_draw_string_adafruit(0, 100, 25, buf, WHITE, BLACK);
 
-        // Border luar Bar (X: 5, Y: 38, Lebar: 118, Tinggi: 8)
         ssd1306_draw_rectangle(0, 5, 38, 118, 8, WHITE);
         
-        // Isi Bar (Lebar maksimal isi adalah 114)
         int fillWidth = (percent * 114) / 100;
         if (fillWidth > 0) {
             for (int i = 0; i < 4; i++) {
@@ -1629,7 +1633,6 @@ void renderSdManager() {
 
         // --- 5. CAROUSEL MENU ACTION ---
         const char* menuNames[] = {"[ EXIT ]", "[ FILES ]", "[ FORMAT ]"};
-        // Hitung posisi tengah dinamis berdasarkan panjang kata
         int textLen = strlen(menuNames[sdActionIdx]) * 6;
         int startX = (128 - textLen) / 2;
 
@@ -1649,6 +1652,7 @@ void renderSdManager() {
 
     ssd1306_refresh(0, true);
 }
+
 
 // Definisi variabel Global buat File Explorer
 char sdFileNames[MAX_FILES][32];
